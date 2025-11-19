@@ -50,23 +50,23 @@ jobs:
           
           echo "Arquivos preparados"
 
-      - name: Configurar host FTP com porta
+      - name: Configurar FTP
         id: ftp-config
         run: |
           HOST="${{ secrets.HOST }}"
           PORTA="${{ secrets.PORTA }}"
           DIRETORIO="${{ secrets.DIRETORIO }}"
           
-          # Se a porta for diferente de 21 (padrão FTP), adicionar ao host
-          if [[ -n "$PORTA" ]] && [[ "$PORTA" != "21" ]]; then
-            FTP_SERVER="${HOST}:${PORTA}"
-          else
-            FTP_SERVER="$HOST"
-          fi
-          
           # Garantir que o diretório termine com /
           if [[ "$DIRETORIO" != */ ]]; then
             DIRETORIO="${DIRETORIO}/"
+          fi
+          
+          # Configurar servidor com porta se necessário
+          if [[ -n "$PORTA" ]] && [[ "$PORTA" != "" ]]; then
+            FTP_SERVER="${HOST}:${PORTA}"
+          else
+            FTP_SERVER="$HOST"
           fi
           
           echo "server=${FTP_SERVER}" >> $GITHUB_OUTPUT
