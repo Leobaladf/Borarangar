@@ -34,8 +34,8 @@ jobs:
           # Criar diretório temporário
           mkdir -p deploy
           
-          # Copiar arquivos HTML e PHP
-          cp -r html/* deploy/
+          # Copiar tudo da raiz para deploy, excluindo .git e .github
+          rsync -av --exclude='.git' --exclude='.github' --exclude='deploy' --exclude='node_modules' . deploy/
           
           # Remover arquivos que não devem ir para produção
           find deploy -name "*.save" -delete
@@ -43,8 +43,10 @@ jobs:
           find deploy -name "*.agada" -delete
           find deploy -name ".git*" -delete
           
-          # Criar arquivo .gitkeep para uploads se necessário
-          mkdir -p deploy/uploads/cardapio
+          # Criar diretório uploads se necessário
+          if [ -d "html/uploads" ]; then
+            mkdir -p deploy/html/uploads/cardapio
+          fi
           
           echo "Arquivos preparados"
 
@@ -53,6 +55,7 @@ jobs:
         run: |
           HOST="${{ secrets.HOST }}"
           PORTA="${{ secrets.PORTA }}"
+          DIRETORIO="${{ secrets.DIRETORIO }}"
           
           # Se a porta for diferente de 21 (padrão FTP), adicionar ao host
           if [[ -n "$PORTA" ]] && [[ "$PORTA" != "21" ]]; then
@@ -61,8 +64,15 @@ jobs:
             FTP_SERVER="$HOST"
           fi
           
+          # Garantir que o diretório termine com /
+          if [[ "$DIRETORIO" != */ ]]; then
+            DIRETORIO="${DIRETORIO}/"
+          fi
+          
           echo "server=${FTP_SERVER}" >> $GITHUB_OUTPUT
+          echo "server-dir=${DIRETORIO}" >> $GITHUB_OUTPUT
           echo "Servidor FTP: ${FTP_SERVER}"
+          echo "Diretorio remoto: ${DIRETORIO}"
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
@@ -71,17 +81,17 @@ jobs:
           username: ${{ secrets.USUARIO }}
           password: ${{ secrets.SENHA }}
           local-dir: ./deploy/
-          server-dir: ${{ secrets.DIRETORIO }}
+          server-dir: ${{ steps.ftp-config.outputs.server-dir }}
           exclude: |
             **/.git*
             **/.git*/**
+            **/.github/**
             **/node_modules/**
             **/.env
             **/*.save
             **/*.old
             **/*.agada
-            **/composer.lock
-            **/composer.json
+            **/deploy/**
 
       - name: Notificar sucesso
         if: success()
