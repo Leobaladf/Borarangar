@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Pedidos - BoraRangar</title>
+    <link id="favicon" rel="icon" type="image/png" href="icons/favicon.png"> 
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeInDown { from { opacity: 0; transform: translate(-50%, -100%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+        .alert-popup { animation: fadeInDown 0.5s ease-out forwards; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        #sound-toggle-btn.sound-on { background-color: #22c55e; }
+        #sound-toggle-btn.sound-off { background-color: #ef4444; }
+        #sound-toggle-btn.sound-request { background-color: #f59e0b; }
+        
+        /* Animação sutil para pedidos atrasados */
+        .atrasado { animation: pulse-red 2s infinite; }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        
+        /* (NOVO) Estilo dos botões de toggle de visualização */
+        .view-toggle-btn.active {
+            background-color: #e2e8f0; /* bg-slate-200 */
+            color: #1e293b; /* text-slate-700 */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 h-screen overflow-hidden flex flex-col">
+
+    <div id="app-content" class="hidden flex flex-col h-screen">
+        <header class="bg-white shadow-md flex-shrink-0">
+            <div class="max-w-7xl mx-auto p-4 flex flex-wrap justify-between items-center gap-4">
+                 <div class="text-center sm:text-left">
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-800">Gestor de Pedidos</h1>
+                    <p id="admin-welcome-message" class="text-sm text-slate-600"></p>
+                </div>
+                <div class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                     <button id="sound-toggle-btn" class="sound-request text-white font-bold py-2 px-4 rounded-lg w-full sm:w-auto text-sm transition-colors duration-200">
+                        🔊 Habilitar Som
+                     </button>
+                    <a href="dashboard.html" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg w-full sm:w-auto text-center">Voltar ao Painel</a> 
+                </div>
+            </div>
+        </header>
+        
+        <main class="w-full flex-grow overflow-hidden grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 md:p-6">
+               <div class="flex flex-col h-full lg:col-span-2">                
+                <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                    <h2 class="text-2xl font-bold text-slate-700">Novos e em Andamento</h2>
+                    <div class="flex items-center gap-2">
+                        <button id="view-toggle-list" class="view-toggle-btn p-2 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-700" title="Visualizar em lista">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                        </button>
+                        <button id="view-toggle-card" class="view-toggle-btn p-2 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-700" title="Visualizar em cards">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                        </button>
+                        
+                        <span id="contador-novos" class="bg-red-600 text-white text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full hidden">0</span>
+                    </div>
+                </div>
+
+                <div id="pedidos-ativos" class="flex-grow overflow-y-auto space-y-4 pr-2 pb-20">
+                    <p class="text-slate-500 text-center mt-10">Carregando...</p>
+                </div>
+            </div>
+            <div class="flex flex-col h-full bg-slate-200 p-4 rounded-lg">
+                <h2 class="text-xl font-bold text-slate-600 mb-4 flex-shrink-0">Concluídos Hoje</h2>
+                <div id="pedidos-concluidos" class="flex-grow overflow-y-auto space-y-4 pr-2 pb-20">
+                     <p class="text-slate-500 text-center mt-10">Carregando...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <audio id="notification-sound" src="sounds/notification.mp3" preload="auto"></audio>
+
+    <div id="entregador-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-xl font-bold text-slate-700 mb-4">Enviar Pedido para Entrega</h2>
+            <form id="entregador-form">
+                <input type="hidden" id="modal-pedido-id">
+                <div class="mb-4">
+                    <label for="select-entregador" class="block text-sm font-medium text-slate-600">Selecione o Entregador</label>
+                    <select id="select-entregador" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md bg-white">
+                        <option value="">Carregando entregadores...</option>
+                    </select>
+                </div>
+                <p id="modal-error-message" class="text-sm h-5 mb-4 text-red-600"></p>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button type="button" class="btn-close-modal bg-slate-200 py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Confirmar Saída</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const appContent = document.getElementById('app-content');
+        const adminWelcomeMessage = document.getElementById('admin-welcome-message');
+        const pedidosAtivosEl = document.getElementById('pedidos-ativos');
+        const pedidosConcluidosEl = document.getElementById('pedidos-concluidos');
+        const contadorNovosEl = document.getElementById('contador-novos');
+        let userName = ''; 
+        let timerInterval = null; 
+
+        // --- (NOVO) Variáveis de Toggle ---
+        const viewToggleList = document.getElementById('view-toggle-list');
+        const viewToggleCard = document.getElementById('view-toggle-card');
+        let viewMode = localStorage.getItem('gestorViewMode') || 'cards'; // Padrão é 'cards'
+
+        // Alerta Visual e Sonoro
+        const originalTitle = document.title; 
+        const faviconLink = document.getElementById('favicon'); 
+        const defaultFavicon = 'icons/favicon.png';
+        const alertFavicon = 'icons/favicon-alerta.png';
+        let isFirstLoad = true; 
+        let pedidosVISTOS = 0;
+        let pedidosAtuais = 0; 
+        let blinkInterval = null; 
+        let isTitleVisible = true; 
+        
+        const notificationSound = document.getElementById('notification-sound');
+        const soundToggleButton = document.getElementById('sound-toggle-btn');
+        let soundEnabled = localStorage.getItem('soundAlertEnabled') === 'true'; 
+        let canPlaySound = false; 
+
+        // Modal
+        const entregadorModal = document.getElementById('entregador-modal');
+        const entregadorForm = document.getElementById('entregador-form');
+        const selectEntregador = document.getElementById('select-entregador');
+        const modalPedidoIdInput = document.getElementById('modal-pedido-id');
+        const modalErrorMessage = document.getElementById('modal-error-message');
+        const closeButtons = document.querySelectorAll('.btn-close-modal');
+
+        // ===========================================
+        // ### FUNÇÕES ATUALIZADAS (Inicialização) ###
+        // ===========================================
+        function initializeApp(loggedInUserName) {
+            userName = loggedInUserName; 
+            appContent.classList.remove('hidden');
+            appContent.classList.add('flex');
+            adminWelcomeMessage.textContent = `Bem-vindo(a), ${userName}!`;
+            
+            updateSoundButtonUI(); 
+            requestSoundPermission(); 
+            fetchEntregadores(); 
+            
+            updateViewToggleUI(); // (NOVO) Seta o botão de visualização
+            
+            buscarPedidos(); 
+            setInterval(buscarPedidos, 10000); 
+            timerInterval = setInterval(atualizarCronometros, 30000);
+
+            // Listeners
+            closeButtons.forEach(btn => btn.addEventListener('click', () => entregadorModal.classList.add('hidden')));
+            entregadorForm.addEventListener('submit', handleAssignDelivery);
+            
+            // --- (NOVOS) Listeners do Toggle ---
+            viewToggleList.addEventListener('click', () => toggleViewMode('list'));
+            viewToggleCard.addEventListener('click', () => toggleViewMode('cards'));
+        }
+
+        async function fetchEntregadores() { /* ... (código sem alteração) ... */ 
+            try {
+                const response = await fetch('/usuario_api.php?action=get_entregadores', { credentials: 'include' });
+                if (!response.ok) throw new Error('Falha ao buscar entregadores');
+                const entregadores = await response.json();
+                selectEntregador.innerHTML = '<option value="">Selecione um entregador...</option>';
+                if (Array.isArray(entregadores) && entregadores.length > 0) {
+                    entregadores.forEach(e => {
+                        selectEntregador.innerHTML += `<option value="${e.id}">${e.nome}</option>`;
+                    });
+                } else {
+                    selectEntregador.innerHTML = '<option value="">Nenhum entregador cadastrado</option>';
+                }
+            } catch (error) {
+                console.error("Erro fetchEntregadores:", error);
+                selectEntregador.innerHTML = '<option value="">Erro ao carregar</option>';
+            }
+        }
+
+        async function buscarPedidos() { /* ... (código sem alteração) ... */ 
+             try {
+                const hoje = new Date().toISOString().split('T')[0];
+                const [ativosResponse, concluidosResponse] = await Promise.all([
+                    fetch('/pedidos_api.php?status=ativos', { credentials: 'include' }), 
+                    fetch(`/pedidos_api.php?status=concluido&data_inicio=${hoje}`, { credentials: 'include' }) 
+                ]);
+
+                if (ativosResponse.status === 403 || concluidosResponse.status === 403) {
+                    window.location.href = '/painel/index.html'; return; 
+                }
+                if (!ativosResponse.ok || !concluidosResponse.ok) throw new Error(`Erro HTTP ao buscar pedidos`);
+
+                const pedidosAtivos = await ativosResponse.json();
+                const pedidosConcluidos = await concluidosResponse.json();
+                 
+                pedidosAtuais = Array.isArray(pedidosAtivos) ? pedidosAtivos.length : 0;
+                
+                if (pedidosAtuais > 0) {
+                    contadorNovosEl.textContent = pedidosAtuais;
+                    contadorNovosEl.classList.remove('hidden');
+                } else {
+                    contadorNovosEl.classList.add('hidden');
+                }
+
+                if (isFirstLoad) {
+                    pedidosVISTOS = pedidosAtuais; 
+                    isFirstLoad = false; 
+                } else {
+                    if (pedidosAtuais > pedidosVISTOS && !document.hasFocus()) {
+                        iniciarAlertaPiscar(); 
+                    }
+                }
+                pedidosVISTOS = pedidosAtuais; 
+                
+                renderizarPedidos(pedidosAtivos, pedidosAtivosEl, true);
+                renderizarPedidos(pedidosConcluidos, pedidosConcluidosEl, false);
+                
+                atualizarCronometros();
+
+            } catch (error) {
+                 console.error("Erro em buscarPedidos:", error); 
+            }
+        }
+        
+        // ============================================================
+        // ### FUNÇÕES ATUALIZADAS (Renderização) ###
+        // ============================================================
+        
+        /**
+         * (NOVO) Controla o modo de visualização
+         */
+        function toggleViewMode(mode) {
+            viewMode = mode;
+            localStorage.setItem('gestorViewMode', mode);
+            updateViewToggleUI();
+            buscarPedidos(); // Força a re-renderização com o novo layout
+        }
+
+        /**
+         * (NOVO) Atualiza a UI dos botões de toggle
+         */
+        function updateViewToggleUI() {
+            if (viewMode === 'list') {
+                viewToggleList.classList.add('active');
+                viewToggleCard.classList.remove('active');
+            } else {
+                viewToggleList.classList.remove('active');
+                viewToggleCard.classList.add('active');
+            }
+        }
+
+        function renderizarPedidos(pedidos, containerElement, isAtivo) {
+            containerElement.innerHTML = ''; 
+            if (!Array.isArray(pedidos) || pedidos.length === 0) {
+                containerElement.innerHTML = `<p class="text-slate-500 text-center pt-10">${isAtivo ? 'Nenhum pedido pendente.' : 'Nenhum pedido concluído hoje.'}</p>`;
+                return;
+            }
+            
+            const gridContainer = document.createElement('div');
+            
+            // ===================================================
+            // ### MUDANÇA 2 e 3: Layout de Grid/Lista e Coluna Única ###
+            // ===================================================
+            if (isAtivo) {
+                // Se for a coluna "Novos", respeita o toggle
+                if (viewMode === 'cards') {
+                    gridContainer.className = 'grid grid-cols-1 xl:grid-cols-2 gap-4';
+                } else {
+                    gridContainer.className = 'grid grid-cols-1 gap-4'; // Modo Lista
+                }
+            } else {
+                // Se for a coluna "Concluídos", é SEMPRE lista (coluna única)
+                gridContainer.className = 'grid grid-cols-1 gap-4';
+            }
+
+            
+            pedidos.forEach(pedido => {
+                if (!pedido || !pedido.detalhes_pedido) return;
+                
+                const detalhes = pedido.detalhes_pedido;
+                const totalFinalApi = parseFloat(pedido.total);
+                const taxaEntrega = parseFloat(detalhes.taxa_entrega || 0);
+                const taxaEmbalagem = parseFloat(detalhes.taxa_embalagem || 0);
+                const valorDesconto = parseFloat(detalhes.valor_desconto || 0);
+                const subtotal = totalFinalApi - taxaEntrega - taxaEmbalagem + valorDesconto;
+
+                // Formatação
+                const subtotalFmt = subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const entregaFmt = taxaEntrega.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const embalagemFmt = taxaEmbalagem.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const descontoFmt = valorDesconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const totalFmt = totalFinalApi.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                
+                // Itens HTML
+                const itensHTML = detalhes.itens.map(item => `
+                    <li class="flex justify-between text-sm border-b border-dashed border-slate-200 py-1 last:border-0">
+                        <span class="font-semibold">${item.quantidade}x ${item.nome}</span>
+                    </li>`
+                ).join('');
+                
+                const descontoRow = valorDesconto > 0 
+                    ? `<div class="flex justify-between text-green-600 font-bold text-sm"><span>Desconto${detalhes.cupom_codigo ? ' ('+detalhes.cupom_codigo+')' : ''}:</span><span>- ${descontoFmt}</span></div>` 
+                    : '';
+
+                const dataCriacao = pedido.created_at ? new Date(pedido.created_at) : new Date();
+                const tempoDecorridoMs = new Date() - dataCriacao;
+                const isAtrasado = isAtivo && tempoDecorridoMs > (45 * 60 * 1000); // 45 min
+                
+                const acoesHTML = isAtivo ? gerarBotoesAcao(pedido) : `<div class="text-center font-bold p-2 rounded-lg bg-gray-100 text-gray-800 text-sm">CONCLUÍDO</div>`;
+                
+                const entregadorHTML = pedido.status === 'em_entrega' && pedido.entregador_nome
+                    ? `<div class="bg-blue-50 p-2 rounded text-xs text-blue-700 font-semibold mt-2 border border-blue-100">🛵 Entregador: ${pedido.entregador_nome}</div>`
+                    : '';
+
+                const obsHTML = detalhes.observacoes 
+                    ? `<div class="bg-yellow-50 p-2 rounded text-xs text-yellow-800 italic mt-2 border border-yellow-100">📝 Obs: ${detalhes.observacoes}</div>`
+                    : '';
+                
+                // ===================================================
+                // ### MUDANÇA 1: Adicionando Endereço ao Card ###
+                // ===================================================
+                const enderecoHTML = `
+                    <div class="text-xs text-slate-500 mt-1">${detalhes.tipo_entrega === 'pickup' ? 'RETIRADA NO BALCÃO' : (detalhes.cliente.endereco || 'Endereço não informado')}</div>
+                `;
+
+                const pedidoCard = document.createElement('div');
+                pedidoCard.className = `bg-white rounded-xl shadow-lg p-4 flex flex-col relative border-l-4 ${getStatusBorderColor(pedido.status)} ${isAtrasado ? 'atrasado' : ''}`;
+                pedidoCard.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono text-xl font-extrabold text-slate-800">#${pedido.id}</span>
+                                <span class="text-xs px-2 py-1 rounded-full font-bold ${getStatusBadgeColor(pedido.status)} uppercase">${pedido.status.replace('_', ' ')}</span>
+                            </div>
+                            <div class="text-xs text-slate-500 mt-1 font-bold">${detalhes.cliente.nome || 'Cliente'}</div>
+                            <div class="text-xs text-slate-400">${detalhes.cliente.telefone || ''}</div>
+                            ${enderecoHTML} </div>
+                        <div class="text-right">
+                             <button class="btn-print text-slate-400 hover:text-slate-600 p-1" title="Imprimir Cupom">🖨️</button>
+                             <div class="text-xs font-mono text-slate-500 timer-update" data-created="${pedido.created_at}">...</div>
+                        </div>
+                    </div>
+                    
+                    ${obsHTML}
+                    <ul class="mt-3 mb-3 space-y-1 text-slate-700">${itensHTML}</ul>
+                    
+                    <div class="bg-slate-50 p-3 rounded-lg space-y-1 text-xs text-slate-600">
+                        <div class="flex justify-between"><span>Subtotal:</span><span class="font-bold">${subtotalFmt}</span></div>
+                        ${taxaEntrega > 0 ? `<div class="flex justify-between"><span>Taxa Entrega:</span><span>+ ${entregaFmt}</span></div>` : ''}
+                        ${taxaEmbalagem > 0 ? `<div class="flex justify-between"><span>Embalagem:</span><span>+ ${embalagemFmt}</span></div>` : ''}
+                        ${descontoRow}
+                        <div class="flex justify-between font-bold text-slate-800 text-base border-t border-slate-300 pt-1 mt-1">
+                            <span>Total:</span><span>${totalFmt}</span>
+                        </div>
+                    </div>
+
+                    ${entregadorHTML}
+                    <div class="mt-4">${acoesHTML}</div>
+                `;
+                
+                pedidoCard.querySelector('.btn-print').addEventListener('click', () => imprimirCupom(pedido, detalhes, totalFmt, subtotalFmt, entregaFmt, embalagemFmt, descontoFmt, valorDesconto));
+                gridContainer.appendChild(pedidoCard);
+            });
+            containerElement.appendChild(gridContainer);
+        }
+
+        // ============================================================
+        // ### FUNÇÕES AUXILIARES (Sem alteração) ###
+        // ============================================================
+
+        function imprimirCupom(pedido, detalhes, total, subtotal, entrega, embalagem, descontoFmt, valorDesconto) {
+            // (Função de impressão original, já contém o endereço)
+            const itensPrint = detalhes.itens.map(item => 
+                `<tr><td colspan="3">${item.quantidade}x ${item.nome}</td></tr>
+                 <tr><td colspan="3" style="text-align:right; border-bottom:1px dashed #000;">(Item s/ valor)</td></tr>`
+            ).join('');
+            
+            const obsPrint = detalhes.observacoes ? `<p style="font-weight:bold; margin: 5px 0;">OBS: ${detalhes.observacoes}</p>` : '';
+            const descontoPrint = valorDesconto > 0 ? `<tr><td>Desconto:</td><td style="text-align:right;">- ${descontoFmt}</td></tr>` : '';
+
+            const printContent = `
+                <html>
+                <head>
+                    <title>Pedido #${pedido.id}</title>
+                    <style>
+                        body { font-family: 'Courier New', monospace; font-size: 12px; width: 300px; margin: 0; padding: 10px; color: #000; }
+                        .header { text-align: center; margin-bottom: 10px; border-bottom: 1px solid #000; padding-bottom: 5px; }
+                        table { width: 100%; border-collapse: collapse; }
+                        td { vertical-align: top; }
+                        .total { font-size: 16px; font-weight: bold; border-top: 1px solid #000; margin-top: 5px; padding-top: 5px; }
+                        .footer { text-align: center; margin-top: 20px; font-size: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2 style="margin:0;">BoraRangar</h2>
+                        <h3 style="margin:5px 0;">PEDIDO #${pedido.id}</h3>
+                        <p>${new Date().toLocaleString('pt-BR')}</p>
+                    </div>
+                    <p><strong>Cliente:</strong> ${detalhes.cliente.nome}</p>
+                    <p><strong>Tel:</strong> ${detalhes.cliente.telefone}</p>
+                    <p><strong>Endereço:</strong> ${detalhes.tipo_entrega === 'pickup' ? 'RETIRADA NO BALCÃO' : (detalhes.cliente.endereco || 'Não informado')}</p>
+                    ${obsPrint}
+                    <br>
+                    <table>
+                        ${itensPrint}
+                    </table>
+                    <br>
+                    <table>
+                        <tr><td>Subtotal:</td><td style="text-align:right;">${subtotal}</td></tr>
+                        ${parseFloat(detalhes.taxa_entrega) > 0 ? `<tr><td>Entrega:</td><td style="text-align:right;">+ ${entrega}</td></tr>` : ''}
+                        ${parseFloat(detalhes.taxa_embalagem) > 0 ? `<tr><td>Embalagem:</td><td style="text-align:right;">+ ${embalagem}</td></tr>` : ''}
+                        ${descontoPrint}
+                    </table>
+                    <div class="total" style="display:flex; justify-content:space-between;">
+                        <span>TOTAL:</span><span>${total}</span>
+                    </div>
+                    <br>
+                    <p>Pagamento: _________________</p>
+                    <div class="footer">Obrigado pela preferência!</div>
+                    <script>window.print(); window.close();<\/script>
+                </body>
+                </html>
+            `;
+            
+            const popup = window.open('', '_blank', 'width=350,height=600');
+            popup.document.write(printContent);
+            popup.document.close();
+        }
+
+        function atualizarCronometros() { /* ... (código sem alteração) ... */ 
+            document.querySelectorAll('.timer-update').forEach(el => {
+                const createdStr = el.dataset.created;
+                if (!createdStr) return;
+                const diff = new Date() - new Date(createdStr);
+                const minutes = Math.floor(diff / 60000);
+                
+                if (minutes < 60) {
+                    el.textContent = `${minutes} min`;
+                    el.className = `text-xs font-mono timer-update ${minutes > 45 ? 'text-red-600 font-bold' : 'text-slate-500'}`;
+                } else {
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    el.textContent = `${hours}h ${mins}m`;
+                    el.className = 'text-xs font-mono timer-update text-red-700 font-bold';
+                }
+            });
+        }
+        function getStatusBorderColor(status) { /* ... (código sem alteração) ... */ 
+            const colors = { 'novo': 'border-yellow-500', 'preparacao': 'border-orange-500', 'pronto': 'border-blue-500', 'em_entrega': 'border-cyan-500', 'concluido': 'border-green-500', 'cancelado': 'border-red-500', 'recusado': 'border-red-800' };
+            return colors[status] || 'border-gray-300';
+        }
+        function getStatusBadgeColor(status) { /* ... (código sem alteração) ... */ 
+            const colors = { 'novo': 'bg-yellow-100 text-yellow-800', 'preparacao': 'bg-orange-100 text-orange-800', 'pronto': 'bg-blue-100 text-blue-800', 'em_entrega': 'bg-cyan-100 text-cyan-800', 'concluido': 'bg-green-100 text-green-800', 'cancelado': 'bg-red-100 text-red-800', 'recusado': 'bg-red-200 text-red-900' };
+            return colors[status] || 'bg-gray-100 text-gray-600';
+        }
+        function gerarBotoesAcao(pedido) { /* ... (código sem alteração) ... */ 
+            const statusAtual = pedido.status; 
+            let botoesHTML = '';
+            
+            if (statusAtual === 'novo') {
+                botoesHTML += `<div class="grid grid-cols-2 gap-2">
+                    <button data-id="${pedido.id}" data-novo-status="recusado" class="btn-acao bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2 rounded-lg">Recusar</button>
+                    <button data-id="${pedido.id}" data-novo-status="preparacao" class="btn-acao bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded-lg">Aceitar (Preparo)</button>
+                </div>`;
+            } else if (statusAtual === 'preparacao') {
+                botoesHTML += `<button data-id="${pedido.id}" data-novo-status="pronto" class="btn-acao w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">Marcar Pronto</button>`;
+            } else if (statusAtual === 'pronto') {
+                if (pedido.detalhes_pedido.tipo_entrega === 'pickup') {
+                     botoesHTML += `<button data-id="${pedido.id}" data-novo-status="concluido" class="btn-acao w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg">Entregar (Balcão)</button>`;
+                } else {
+                     botoesHTML += `<button data-id="${pedido.id}" class="btn-open-delivery-modal w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 rounded-lg">Enviar Entrega</button>`;
+                }
+            } else if (statusAtual === 'em_entrega') {
+                botoesHTML += `<button data-id="${pedido.id}" data-novo-status="concluido" class="btn-acao w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg">Finalizar Pedido</button>`;
+            }
+            return botoesHTML;
+        }
+        async function atualizarStatusPedido(pedidoId, novoStatus, botao) { /* ... (código sem alteração) ... */ 
+            try { 
+                const response = await fetch(`/pedidos_api.php?id=${pedidoId}`, { 
+                    method: 'PATCH', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ status: novoStatus }),
+                    credentials: 'include'
+                }); 
+                const data = await response.json(); 
+                if (response.ok && data.status === 'success') { 
+                    buscarPedidos(); 
+                } else { 
+                    alert(`Erro: ${data.message}`); 
+                    botao.disabled = false; botao.textContent = 'Erro';
+                } 
+            } catch (error) { alert("Erro de comunicação."); buscarPedidos(); }
+        }
+        async function handleAssignDelivery(e) { /* ... (código sem alteração) ... */ 
+            e.preventDefault();
+            const pedidoId = modalPedidoIdInput.value;
+            const entregadorId = selectEntregador.value;
+            if (!entregadorId) { modalErrorMessage.textContent = 'Selecione um entregador.'; return; }
+            modalErrorMessage.textContent = '';
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            submitButton.disabled = true; submitButton.textContent = 'Enviando...';
+
+            try {
+                const response = await fetch(`/pedidos_api.php?id=${pedidoId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'em_entrega', entregador_id: entregadorId }),
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (response.ok && data.status === 'success') {
+                    entregadorModal.classList.add('hidden'); buscarPedidos(); 
+                } else { throw new Error(data.message); }
+            } catch (error) { modalErrorMessage.textContent = `Erro: ${error.message}`; } 
+            finally { submitButton.disabled = false; submitButton.textContent = 'Confirmar Saída'; }
+        }
+        document.getElementById('app-content').addEventListener('click', (e) => { /* ... (código sem alteração) ... */ 
+            const target = e.target; 
+            if (target.classList.contains('btn-acao')) { 
+                const pedidoId = target.dataset.id; 
+                const novoStatus = target.dataset.novoStatus; 
+                target.disabled = true; target.textContent = '...'; 
+                atualizarStatusPedido(pedidoId, novoStatus, target); 
+            } 
+            if (target.classList.contains('btn-open-delivery-modal')) {
+                const pedidoId = target.dataset.id;
+                modalPedidoIdInput.value = pedidoId; selectEntregador.value = ''; modalErrorMessage.textContent = ''; entregadorModal.classList.remove('hidden');
+            }
+        });
+        
+        // Verifica sessão e inicia
+        fetch('/pedidos_api.php?status=ativos&limit=1', {credentials: 'include'}).then(async res => { 
+            if (res.ok) { 
+                const userDataRes = await fetch('/usuario_api.php', {credentials: 'include'}); 
+                const users = await userDataRes.json(); 
+                initializeApp(users[0]?.nome || "Usuário"); 
+            } else { window.location.href = '/painel/index.html'; } 
+        });
+
+        // Funções auxiliares de som/alerta (mantidas iguais)
+        function iniciarAlertaPiscar() { if (blinkInterval) return; if (faviconLink) faviconLink.href = alertFavicon; blinkInterval = setInterval(() => { document.title = isTitleVisible ? "!! NOVO PEDIDO !!" : originalTitle; isTitleVisible = !isTitleVisible; }, 1000); playSoundAlert(); }
+        function pararAlertaPiscar() { if (blinkInterval) { clearInterval(blinkInterval); blinkInterval = null; document.title = originalTitle; if (faviconLink) faviconLink.href = defaultFavicon; } }
+        function handleWindowFocus() { if (document.hasFocus()) { pararAlertaPiscar(); pedidosVISTOS = pedidosAtuais; isFirstLoad = false; } }
+        document.addEventListener('visibilitychange', handleWindowFocus); window.addEventListener('focus', handleWindowFocus); window.addEventListener('click', handleWindowFocus); 
+        async function requestSoundPermission() { if (canPlaySound) return; try { await notificationSound.play(); canPlaySound = true; updateSoundButtonUI(); } catch (error) { canPlaySound = false; updateSoundButtonUI(); } }
+        function playSoundAlert() { if (soundEnabled && canPlaySound && notificationSound) { notificationSound.currentTime = 0; notificationSound.play().catch(e => { canPlaySound = false; updateSoundButtonUI(); }); } else if (soundEnabled && !canPlaySound) { requestSoundPermission(); } }
+        function updateSoundButtonUI() { if (!canPlaySound) { soundToggleButton.textContent = '🔊 Habilitar Som'; soundToggleButton.className = 'sound-request text-white font-bold py-2 px-4 rounded-lg w-full sm:w-auto text-sm'; } else if (soundEnabled) { soundToggleButton.textContent = '🔊 Som Ligado'; soundToggleButton.className = 'sound-on text-white font-bold py-2 px-4 rounded-lg w-full sm:w-auto text-sm'; } else { soundToggleButton.textContent = '🔇 Som Desligado'; soundToggleButton.className = 'sound-off text-white font-bold py-2 px-4 rounded-lg w-full sm:w-auto text-sm'; } }
+        soundToggleButton.addEventListener('click', () => { if (!canPlaySound) { requestSoundPermission(); } else { soundEnabled = !soundEnabled; localStorage.setItem('soundAlertEnabled', soundEnabled); updateSoundButtonUI(); if (soundEnabled) playSoundAlert(); } });
+    });
+    </script>
+</body>
+</html>

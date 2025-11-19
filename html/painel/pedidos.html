@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios de Pedidos - BoraRangar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .star-rating { color: #f59e0b; font-size: 1.1rem; }
+        .star-rating .empty { color: #d1d5db; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+    <div id="app-content" class="hidden">
+        <header class="bg-white shadow-md">
+            <div class="max-w-7xl mx-auto p-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-slate-800">Histórico e Relatórios de Pedidos</h1>
+                <a href="dashboard.html" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg">Voltar ao Painel</a>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto p-4 md:p-8">
+            <section class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-bold text-slate-700 mb-4">Filtros e Métricas</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div><label for="start-date" class="block text-sm font-medium text-slate-600">Data Inicial</label><input type="date" id="start-date" class="mt-1 block w-full p-2 border border-slate-300 rounded-md"></div>
+                    <div><label for="end-date" class="block text-sm font-medium text-slate-600">Data Final</label><input type="date" id="end-date" class="mt-1 block w-full p-2 border border-slate-300 rounded-md"></div>
+                    <div><label for="status-filter" class="block text-sm font-medium text-slate-600">Status</label><select id="status-filter" class="mt-1 block w-full p-2 border border-slate-300 rounded-md"><option value="todos">Todos</option><option value="concluido" selected>Concluído</option><option value="cancelado">Cancelado</option><option value="recusado">Recusado</option><option value="novo">Novo</option><option value="preparacao">Em Preparação</option><option value="pronto">Pronto</option></select></div>
+                    <button id="filter-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Filtrar</button>
+                </div>
+                
+                <div id="metrics-summary" class="grid grid-cols-2 md:grid-cols-6 gap-4 mt-6 pt-4 border-t">
+                    
+                    <div class="bg-slate-100 p-4 rounded-lg text-center"><p class="text-sm font-semibold text-slate-500">Pedidos (Filtro)</p><p id="total-orders-filtered" class="text-3xl font-bold text-slate-800">--</p></div>
+                    <div class="bg-slate-100 p-4 rounded-lg text-center"><p class="text-sm font-semibold text-slate-500">Faturamento (Concluídos)</p><p id="total-revenue" class="text-3xl font-bold text-green-600">R$ --</p></div>
+                    <div class="bg-slate-100 p-4 rounded-lg text-center"><p class="text-sm font-semibold text-slate-500">Ticket Médio (Concluídos)</p><p id="average-ticket" class="text-3xl font-bold text-slate-800">R$ --</p></div>
+                    <div class="bg-slate-100 p-4 rounded-lg text-center"><p class="text-sm font-semibold text-slate-500">Tempo Médio (Concluídos)</p><p id="average-time" class="text-3xl font-bold text-slate-800">--</p></div>
+                    
+                    <div class="bg-yellow-100 p-4 rounded-lg text-center">
+                        <p class="text-sm font-semibold text-slate-500">Média de Avaliações</p>
+                        <p id="average-rating" class="text-3xl font-bold text-yellow-600">--</p>
+                    </div>
+                    <div class="bg-yellow-100 p-4 rounded-lg text-center">
+                        <p class="text-sm font-semibold text-slate-500">Total de Avaliações</p>
+                        <p id="total-ratings" class="text-3xl font-bold text-slate-800">0</p>
+                    </div>
+                    </div>
+            </section>
+
+            <section class="bg-white shadow-md rounded-lg overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-50 text-xs text-slate-700 uppercase">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Data/Hora</th><th scope="col" class="px-6 py-3">Pedido</th><th scope="col" class="px-6 py-3">Cliente</th><th scope="col" class="px-6 py-3">Valor</th><th scope="col" class="px-6 py-3">Duração</th><th scope="col" class="px-6 py-3">Avaliação</th><th scope="col" class="px-6 py-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body"></tbody>
+                </table>
+                <div id="loading-orders" class="text-center p-6 text-slate-500"><p>Carregando pedidos...</p></div>
+            </section>
+        </main>
+    </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Seletores dos elementos da página
+    const appContent = document.getElementById('app-content');
+    const startDateInput = document.getElementById('start-date');
+    const endDateInput = document.getElementById('end-date');
+    const statusFilter = document.getElementById('status-filter');
+    const filterBtn = document.getElementById('filter-btn');
+    const ordersTableBody = document.getElementById('orders-table-body');
+    const loadingOrders = document.getElementById('loading-orders');
+    const totalOrdersFilteredEl = document.getElementById('total-orders-filtered');
+    const totalRevenueEl = document.getElementById('total-revenue');
+    const averageTicketEl = document.getElementById('average-ticket');
+    const averageTimeEl = document.getElementById('average-time'); 
+    
+    // NOVOS SELETORES DE AVALIAÇÃO
+    const averageRatingEl = document.getElementById('average-rating'); 
+    const totalRatingsEl = document.getElementById('total-ratings');   
+
+    let appInitialized = false;
+
+    
+    // --- Funções ---
+    const formatCurrency = (value) => {
+        if (typeof value !== 'number') value = 0;
+        return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
+
+    function initializeAppAndListeners() {
+        if (appInitialized) return;
+        appInitialized = true;
+        appContent.classList.remove('hidden'); 
+
+        // Listener do botão de filtro
+        filterBtn.addEventListener('click', fetchOrders);
+
+        // Define datas padrão (hoje)
+        const today = new Date().toISOString().split('T')[0];
+        startDateInput.value = today;
+        endDateInput.value = today;
+
+        // Carga inicial dos dados
+        fetchOrders(); 
+    }
+    
+    /**
+     * Busca os pedidos na API com base nos filtros
+     */
+    async function fetchOrders() {
+        loadingOrders.style.display = 'block';
+        loadingOrders.textContent = 'Carregando pedidos...';
+        ordersTableBody.innerHTML = '';
+        resetMetrics();
+
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        const status = statusFilter.value;
+
+        // Constrói a URL da API
+        const apiUrl = new URL('/pedidos_api.php', window.location.origin);
+        apiUrl.searchParams.append('status', status);
+        if (startDate) apiUrl.searchParams.append('data_inicio', startDate);
+        if (endDate) apiUrl.searchParams.append('data_fim', endDate);
+
+        try {
+            const response = await fetch(apiUrl.toString(), { credentials: 'include' });
+            if (response.status === 403) {
+                window.location.href = '/painel/index.html'; 
+                return;
+            }
+            if (!response.ok) throw new Error('Falha ao buscar pedidos.');
+
+            // ATUALIZADO: Recebe o objeto { pedidos, metricas_avaliacoes }
+            const data = await response.json();
+            
+            if (!data.pedidos || !Array.isArray(data.pedidos)) throw new Error('Resposta inesperada da API.');
+
+            renderOrders(data.pedidos);
+            calculateMetrics(data.pedidos, data.metricas_avaliacoes); // Passa as métricas de avaliação
+            
+
+        } catch (error) {
+            console.error("Erro em fetchOrders:", error);
+            loadingOrders.innerHTML = `<p class="text-red-500 text-center">${error.message}</p>`;
+        }
+    }
+
+    /**
+     * Renderiza as estrelas de avaliação
+     */
+    function renderStars(rating) {
+        if (rating === null || rating === 0) {
+            return '<span class="empty text-slate-300">-</span>';
+        }
+        let stars = '';
+        for (let i = 1; i <= 5; i++) {
+            stars += `<span class="${i <= rating ? 'text-yellow-400' : 'empty text-slate-300'}">★</span>`;
+        }
+        return `<span class="star-rating">${stars}</span>`;
+    }
+
+    /**
+     * Renderiza os pedidos na tabela
+     */
+    function renderOrders(pedidos) {
+        if (pedidos.length === 0) {
+            loadingOrders.innerHTML = '<p class="text-slate-500 text-center">Nenhum pedido encontrado para este filtro.</p>';
+            return;
+        }
+        
+        loadingOrders.style.display = 'none'; 
+        ordersTableBody.innerHTML = ''; 
+
+        pedidos.forEach(pedido => {
+            const clienteNome = pedido.detalhes_pedido?.cliente?.nome || 'Não informado';
+            const totalFmt = formatCurrency(pedido.total); 
+            const dataHora = pedido.created_at ? new Date(pedido.created_at).toLocaleString('pt-BR') : '--';
+            
+            // Calcula a duração 
+            let duracao = '--';
+            if (pedido.created_at && pedido.updated_at) {
+                const inicio = new Date(pedido.created_at);
+                const fim = new Date(pedido.updated_at);
+                const diffMs = fim - inicio;
+                const diffMins = Math.round(diffMs / 60000); 
+                if (diffMins > 0) duracao = `${diffMins} min`;
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = 'bg-white border-b';
+            tr.innerHTML = `
+                <td class="px-6 py-4 text-slate-600">${dataHora}</td>
+                <td class="px-6 py-4 font-mono font-bold text-red-600">#${pedido.id}</td>
+                <td class="px-6 py-4 font-medium text-slate-900">${clienteNome}</td>
+                <td class="px-6 py-4 font-semibold text-green-600">${totalFmt}</td>
+                <td class="px-6 py-4 text-slate-600">${duracao}</td>
+                <td class="px-6 py-4">${renderStars(pedido.rating)}</td>
+                <td class="px-6 py-4"><span class="font-semibold capitalize">${pedido.status}</span></td>
+            `;
+            ordersTableBody.appendChild(tr);
+        });
+    }
+
+    /**
+     * Calcula as métricas do cabeçalho
+     */
+    function calculateMetrics(pedidos, metricasAvaliacoes) {
+        if (pedidos.length === 0) {
+            resetMetrics();
+            return;
+        }
+
+        const concluidos = pedidos.filter(p => p.status === 'concluido');
+        const faturamento = concluidos.reduce((acc, p) => acc + p.total, 0); 
+        const ticketMedio = concluidos.length > 0 ? faturamento / concluidos.length : 0;
+        
+        // --- Lógica para exibir as Métricas de Avaliação ---
+        const mediaAvaliacoes = metricasAvaliacoes?.media || 0;
+        const totalAvaliacoes = metricasAvaliacoes?.total || 0;
+
+
+        totalOrdersFilteredEl.textContent = pedidos.length;
+        totalRevenueEl.textContent = formatCurrency(faturamento);
+        averageTicketEl.textContent = formatCurrency(ticketMedio);
+        averageTimeEl.textContent = '--'; 
+        
+        // ATUALIZA OS NOVOS ELEMENTOS
+        averageRatingEl.textContent = mediaAvaliacoes.toFixed(1).replace('.', ',');
+        totalRatingsEl.textContent = totalAvaliacoes;
+    }
+
+    /**
+     * Reseta as métricas (Atualizada para resetar Avaliações também)
+     */
+    function resetMetrics() {
+        totalOrdersFilteredEl.textContent = '0';
+        totalRevenueEl.textContent = 'R$ 0,00';
+        averageTicketEl.textContent = 'R$ 0,00';
+        averageTimeEl.textContent = '--';
+        
+        // NOVO
+        averageRatingEl.textContent = '--';
+        totalRatingsEl.textContent = '0';
+    }
+    
+    // --- Verificação de Sessão Inicial ---
+    fetch('/pedidos_api.php?status=ativos&limit=1', { credentials: 'include' })
+        .then(res => { 
+            if (res.ok) { 
+                initializeAppAndListeners(); // Inicia a página se estiver logado
+            } else { 
+                window.location.href = '/painel/index.html'; 
+            } 
+        })
+        .catch(err => { 
+            console.error("Erro na verificação inicial:", err);
+            window.location.href = '/painel/index.html'; 
+        });
+});
+</script>
+</body>
+</html>

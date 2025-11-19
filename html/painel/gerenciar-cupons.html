@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Cupons - BoraRangar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilo para o switch 'Ativo' */
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 28px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #22c55e; }
+        input:checked + .slider:before { transform: translateX(22px); }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+    <div id="app-content" class="hidden">
+        <header class="bg-white shadow-md">
+            <div class="max-w-7xl mx-auto p-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-slate-800">Gerenciar Cupons de Desconto</h1>
+               <a href="dashboard.html" class="text-sm text-blue-600 hover:underline">Voltar ao Painel</a>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <section class="lg:col-span-1 bg-white shadow-md rounded-lg p-6 h-fit">
+                <h2 class="text-xl font-bold text-slate-700 mb-4">Criar Novo Cupom</h2>
+                <form id="add-cupom-form" class="space-y-4">
+                    <div>
+                        <label for="input-codigo" class="block text-sm font-medium text-slate-600">Código</label>
+                        <input type="text" id="input-codigo" placeholder="Ex: BORA10" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md uppercase">
+                        <small class="text-slate-500">O cliente digitará este código. Sem espaços.</small>
+                    </div>
+                    <div>
+                        <label for="select-tipo" class="block text-sm font-medium text-slate-600">Tipo</label>
+                        <select id="select-tipo" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md bg-white">
+                            <option value="percent">Porcentagem (%)</option>
+                            <option value="fixed">Valor Fixo (R$)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="input-valor" class="block text-sm font-medium text-slate-600">Valor</label>
+                        <input type="number" id="input-valor" step="0.01" min="0.01" placeholder="Ex: 10 (para 10%) ou 5.00 (para R$5)" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="input-validade" class="block text-sm font-medium text-slate-600">Data de Validade</label>
+                        <input type="date" id="input-validade" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Criar Cupom</button>
+                    <p id="form-message" class="text-sm h-5 mt-2"></p>
+                </form>
+            </section>
+
+            <section class="lg:col-span-2">
+                <h2 class="text-xl font-bold text-slate-700 p-4">Cupons Cadastrados</h2>
+                <div id="loading-cupons" class="text-center p-6 text-slate-500"><p>Carregando...</p></div>
+                <div id="cupons-list" class="space-y-4">
+                    </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="edit-cupom-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+            <h2 class="text-xl font-bold text-slate-700 mb-6">Editar Cupom</h2>
+            <form id="edit-cupom-form" class="space-y-4">
+                <input type="hidden" id="edit-cupom-id">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="edit-codigo" class="block text-sm font-medium text-slate-600">Código</label>
+                        <input type="text" id="edit-codigo" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md uppercase">
+                    </div>
+                    <div>
+                        <label for="edit-tipo" class="block text-sm font-medium text-slate-600">Tipo</label>
+                        <select id="edit-tipo" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md bg-white">
+                            <option value="percent">Porcentagem (%)</option>
+                            <option value="fixed">Valor Fixo (R$)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="edit-valor" class="block text-sm font-medium text-slate-600">Valor</label>
+                        <input type="number" id="edit-valor" step="0.01" min="0.01" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="edit-validade" class="block text-sm font-medium text-slate-600">Data de Validade</label>
+                        <input type="date" id="edit-validade" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md">
+                    </div>
+                </div>
+                
+                <div class="pt-4">
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="font-medium text-slate-700">Cupom Ativo</span>
+                        <label class="switch">
+                            <input type="checkbox" id="edit-ativo">
+                            <span class="slider"></span>
+                        </label>
+                    </label>
+                    <small class="text-slate-500">Desative para cancelar o cupom antes da data de validade.</small>
+                </div>
+                
+                <p id="edit-form-message" class="text-sm h-5 mt-2"></p>
+                
+                <div class="flex justify-end gap-4 mt-6 border-t pt-4">
+                    <button type="button" class="btn-close-modal bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Seletores Principais ---
+    const appContent = document.getElementById('app-content');
+    const addCupomForm = document.getElementById('add-cupom-form');
+    const formMessage = document.getElementById('form-message');
+    const loadingCupons = document.getElementById('loading-cupons');
+    const cuponsListDiv = document.getElementById('cupons-list');
+    
+    // Inputs do formulário ADICIONAR
+    const inputCodigo = document.getElementById('input-codigo');
+    const selectTipo = document.getElementById('select-tipo');
+    const inputValor = document.getElementById('input-valor');
+    const inputValidade = document.getElementById('input-validade');
+
+    // --- (NOVO) Seletores do MODAL DE EDIÇÃO ---
+    const editModal = document.getElementById('edit-cupom-modal');
+    const editForm = document.getElementById('edit-cupom-form');
+    const editFormMessage = document.getElementById('edit-form-message');
+    const editCupomId = document.getElementById('edit-cupom-id');
+    const editCodigo = document.getElementById('edit-codigo');
+    const editTipo = document.getElementById('edit-tipo');
+    const editValor = document.getElementById('edit-valor');
+    const editValidade = document.getElementById('edit-validade');
+    const editAtivo = document.getElementById('edit-ativo');
+    const closeButtons = document.querySelectorAll('.btn-close-modal');
+
+    let appInitialized = false;
+    let allCuponsData = []; // Guarda os cupons para o modal de edição
+
+    // --- FUNÇÕES PRINCIPAIS ---
+    function initializeApp() {
+        if (appInitialized) return;
+        appInitialized = true;
+        appContent.classList.remove('hidden');
+
+        const hoje = new Date();
+        hoje.setDate(hoje.getDate() + 7);
+        inputValidade.value = hoje.toISOString().split('T')[0];
+
+        fetchCupons();
+
+        // Listeners
+        addCupomForm.addEventListener('submit', handleFormSubmit);
+        cuponsListDiv.addEventListener('click', handleListClick);
+        
+        // --- (NOVO) Listeners do MODAL ---
+        editForm.addEventListener('submit', handleEditSubmit);
+        closeButtons.forEach(btn => btn.addEventListener('click', () => editModal.classList.add('hidden')));
+    }
+
+    async function fetchCupons() {
+        loadingCupons.style.display = 'block';
+        cuponsListDiv.innerHTML = '';
+        try {
+            const response = await fetch('/cupons_api.php', { credentials: 'include' });
+            if (!response.ok) {
+                if(response.status === 403) window.location.href = '/painel/index.html';
+                throw new Error('Falha ao buscar cupons');
+            }
+            const cupons = await response.json();
+            allCuponsData = cupons; // Salva os dados para o modal
+            renderCupons(cupons);
+        } catch (error) {
+            console.error("Erro fetchCupons:", error);
+            loadingCupons.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+        }
+    }
+
+    function renderCupons(cupons) {
+        if (!Array.isArray(cupons)) { /* ... (Erro) ... */ return; }
+        if (cupons.length === 0) {
+            loadingCupons.innerHTML = '<p class="text-slate-500 text-center p-6">Nenhum cupom criado.</p>';
+            return;
+        }
+        loadingCupons.style.display = 'none';
+        cuponsListDiv.innerHTML = ''; 
+
+        const hoje = new Date().toISOString().split('T')[0];
+        const ativos = cupons.filter(c => c.data_validade >= hoje && c.ativo);
+        const expirados = cupons.filter(c => c.data_validade < hoje || !c.ativo);
+
+        ativos.forEach(cupom => renderCupomCard(cupom, false));
+        expirados.forEach(cupom => renderCupomCard(cupom, true));
+    }
+    
+    // ===========================================
+    // ### renderCupomCard ATUALIZADO com botão "Editar" ###
+    // ===========================================
+    function renderCupomCard(cupom, isExpirado) {
+        const dataValidade = new Date(cupom.data_validade + 'T00:00:00-03:00').toLocaleDateString('pt-BR');
+        const valorFmt = cupom.tipo === 'percent' 
+            ? `${parseInt(cupom.valor)}%` 
+            : parseFloat(cupom.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const economiaFmt = parseFloat(cupom.total_descontado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        cuponsListDiv.innerHTML += `
+            <div class="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${isExpirado ? 'opacity-50 bg-white' : 'bg-white border border-slate-100 shadow-sm rounded-lg'}">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <p class="font-bold text-xl text-slate-800 tracking-wide">${cupom.codigo}</p>
+                        ${isExpirado 
+                            ? '<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded font-bold">INATIVO</span>' 
+                            : '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">ATIVO</span>'}
+                    </div>
+                    <p class="text-sm font-semibold text-green-600 mt-1">${valorFmt} de desconto</p>
+                    <p class="text-xs text-slate-500">Válido até: ${dataValidade}</p>
+                </div>
+
+                <div class="flex flex-col items-end text-right border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-4 w-full sm:w-auto">
+                    <p class="text-xs font-bold text-slate-500 uppercase">Utilizações</p>
+                    <p class="text-lg font-bold text-blue-600">${cupom.qtd_usos}x</p>
+                    <p class="text-xs text-slate-400">Economia gerada: ${economiaFmt}</p>
+                    
+                    <div class="flex gap-2 mt-3">
+                        <button data-id="${cupom.id}" class="edit-cupom-btn text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 font-semibold py-1 px-3 rounded transition-colors">
+                            Editar
+                        </button>
+                        <button data-id="${cupom.id}" data-codigo="${cupom.codigo}" class="delete-cupom-btn text-xs bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 font-semibold py-1 px-3 rounded transition-colors">
+                            Excluir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        formMessage.textContent = 'Salvando...';
+        formMessage.className = 'text-sm h-5 mt-2 text-blue-600';
+        const data = {
+            codigo: inputCodigo.value.toUpperCase().trim(),
+            tipo: selectTipo.value,
+            valor: parseFloat(inputValor.value),
+            data_validade: inputValidade.value
+        };
+        try {
+            const response = await fetch('/cupons_api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), credentials: 'include' });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Erro desconhecido');
+            formMessage.textContent = 'Cupom criado com sucesso!';
+            formMessage.className = 'text-sm h-5 mt-2 text-green-600';
+            addCupomForm.reset();
+            const hoje = new Date();
+            hoje.setDate(hoje.getDate() + 7);
+            inputValidade.value = hoje.toISOString().split('T')[0];
+            fetchCupons(); 
+        } catch (error) {
+            formMessage.textContent = `Erro: ${error.message}`;
+            formMessage.className = 'text-sm h-5 mt-2 text-red-600';
+        }
+    }
+
+    // ===========================================
+    // ### handleListClick ATUALIZADO para "Editar" ###
+    // ===========================================
+    async function handleListClick(e) {
+        // Botão de Excluir
+        if (e.target.classList.contains('delete-cupom-btn')) {
+            const cupomId = e.target.dataset.id;
+            const cupomCodigo = e.target.dataset.codigo;
+            if (!confirm(`Tem certeza que deseja excluir o cupom "${cupomCodigo}"?`)) return;
+            e.target.disabled = true;
+            e.target.textContent = '...';
+            try {
+                const response = await fetch(`/cupons_api.php?id=${cupomId}`, { method: 'DELETE', credentials: 'include' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Erro desconhecido');
+                fetchCupons(); 
+            } catch (error) {
+                alert(`Erro: ${error.message}`);
+                e.target.disabled = false;
+                e.target.textContent = 'Excluir Cupom';
+            }
+        }
+        
+        // (NOVO) Botão de Editar
+        if (e.target.classList.contains('edit-cupom-btn')) {
+            const cupomId = e.target.dataset.id;
+            openEditModal(cupomId);
+        }
+    }
+
+    // ===========================================
+    // ### NOVAS FUNÇÕES (Modal de Edição) ###
+    // ===========================================
+    
+    /**
+     * Abre o modal e preenche com os dados do cupom
+     */
+    function openEditModal(cupomId) {
+        const cupom = allCuponsData.find(c => c.id == cupomId);
+        if (!cupom) {
+            alert('Erro: Cupom não encontrado.');
+            return;
+        }
+        
+        // Preenche o formulário
+        editCupomId.value = cupom.id;
+        editCodigo.value = cupom.codigo;
+        editTipo.value = cupom.tipo;
+        editValor.value = cupom.valor;
+        editValidade.value = cupom.data_validade;
+        editAtivo.checked = cupom.ativo;
+        
+        editFormMessage.textContent = '';
+        editModal.classList.remove('hidden');
+    }
+
+    /**
+     * Lida com o envio do formulário de EDIÇÃO
+     */
+    async function handleEditSubmit(e) {
+        e.preventDefault();
+        editFormMessage.textContent = 'Salvando...';
+        editFormMessage.className = 'text-sm h-5 mt-2 text-blue-600';
+        
+        const cupomId = editCupomId.value;
+
+        const data = {
+            codigo: editCodigo.value.toUpperCase().trim(),
+            tipo: editTipo.value,
+            valor: parseFloat(editValor.value),
+            data_validade: editValidade.value,
+            ativo: editAtivo.checked
+        };
+        
+        try {
+            const response = await fetch(`/cupons_api.php?id=${cupomId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+                credentials: 'include'
+            });
+            
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Erro desconhecido');
+
+            editFormMessage.textContent = 'Cupom atualizado!';
+            editFormMessage.className = 'text-sm h-5 mt-2 text-green-600';
+            
+            fetchCupons(); // Atualiza a lista
+            
+            setTimeout(() => {
+                editModal.classList.add('hidden');
+            }, 1000); // Fecha o modal após 1s
+
+        } catch (error) {
+            editFormMessage.textContent = `Erro: ${error.message}`;
+            editFormMessage.className = 'text-sm h-5 mt-2 text-red-600';
+        }
+    }
+
+    // --- Verificação de Sessão Inicial ---
+    fetch('/usuario_api.php', { credentials: 'include' })
+        .then(res => { 
+            if (res.ok) { 
+                initializeApp(); 
+            } else { 
+                window.location.href = '/painel/index.html'; 
+            } 
+        })
+        .catch(err => { 
+            console.error("Erro na verificação inicial:", err);
+            window.location.href = '/painel/index.html'; 
+        });
+});
+</script>
+
+</body>
+</html>

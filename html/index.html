@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoraRangar - Seu Sistema de Delivery Próprio Sem Taxas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        html { scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="bg-white text-slate-700">
+
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <nav class="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
+            <a href="#" class="text-3xl font-bold text-red-600">BoraRangar</a>
+            <div class="hidden md:flex items-center gap-6">
+                <a href="#solucoes" class="font-semibold text-slate-600 hover:text-red-600">Soluções</a>
+                <a href="#planos" class="font-semibold text-slate-600 hover:text-red-600">Planos</a>
+                <a href="#contato" class="font-semibold text-slate-600 hover:text-red-600">Contato</a>
+            </div>
+            <a href="/painel/" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+                Login
+            </a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="bg-slate-50">
+            <div class="max-w-7xl mx-auto px-6 py-24 md:py-32 text-center">
+                <h1 class="text-4xl md:text-6xl font-extrabold text-slate-900">
+                    Seu delivery próprio, <span class="text-red-600">sem comissão.</span>
+                </h1>
+                <p class="text-lg md:text-xl text-slate-600 mt-6 max-w-3xl mx-auto">
+                    Chega de pagar taxas absurdas. Tenha seu cardápio online com subdomínio próprio, receba pedidos ilimitados e gerencie tudo em um painel simples.
+                </p>
+                <a href="#planos" class="mt-10 inline-block bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 px-12 rounded-lg transition-colors shadow-lg">
+                    Quero meu delivery!
+                </a>
+            </div>
+        </section>
+
+        <section id="solucoes" class="py-24">
+            <div class="max-w-7xl mx-auto px-6">
+                <h2 class="text-center text-4xl font-bold text-slate-800 mb-4">Um sistema completo para o seu restaurante</h2>
+                <p class="text-center text-lg text-slate-500 mb-16">Tudo que você precisa para decolar seu delivery.</p>
+                
+                <div class="grid md:grid-cols-3 gap-8">
+                    
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-100">
+                        <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        <h3 class="text-xl font-bold mt-4">Cardápio Digital</h3>
+                        <p class="text-slate-500 mt-2">Um site com subdomínio (ex: seurestaurante.borarangar.com.br) 100% personalizável.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-100">
+                        <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <h3 class="text-xl font-bold mt-4">Gestor de Pedidos</h3>
+                        <p class="text-slate-500 mt-2">Receba pedidos em tempo real com alerta sonoro. Aceite, recuse e gerencie sua fila.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-100">
+                        <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                        <h3 class="text-xl font-bold mt-4">Cupons de Desconto</h3>
+                        <p class="text-slate-500 mt-2">Crie cupons de % ou valor fixo (R$) para atrair e fidelizar seus clientes.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-100">
+                        <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <h3 class="text-xl font-bold mt-4">Taxas por Bairro</h3>
+                        <p class="text-slate-500 mt-2">Configure taxas de entrega personalizadas para cada bairro da sua cidade.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-100">
+                        <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <h3 class="text-xl font-bold mt-4">Portal RH</h3>
+                        <p class="text-slate-500 mt-2">Gerencie seus funcionários, cadastre cargos e controle vales e adiantamentos.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-100">
+                        <svg class="w-10 h-10 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path d="M13.58 3.543a.962.962 0 01-.13 1.352l-1.85 1.768a.962.962 0 01-1.352-.131L9.12 4.61a.962.962 0 01-.13-1.352l1.85-1.768a.962.962 0 011.352.131L13.58 3.543zm-3.131 4.908a.962.962 0 01-.13 1.352l-1.85 1.768a.962.962 0 01-1.352-.131L5.99 9.52a.962.962 0 01-.13-1.352l1.85-1.768a.962.962 0 011.352.131l1.127 1.917z"></path><path fill-rule="evenodd" d="M17.17 6.83c.209.36.077.83-.284 1.039l-2.611 1.508a.962.962 0 01-1.22-.2l-1.127-1.917a.962.962 0 01.2-1.22l2.611-1.508c.36-.209.83.077 1.039.284l.004.007.004.007zm-10.292 4.98a.962.962 0 01-.2 1.22l-2.61 1.508c-.36.209-.83.077-1.04-.284l-.007-.01-.004-.007a.962.962 0 01.2-1.22l2.61-1.508a.962.962 0 011.22.2l.004.007.004.007z" clip-rule="evenodd"></path></svg>
+                        <h3 class="text-xl font-bold mt-4">Integração WhatsApp</h3>
+                        <p class="text-slate-500 mt-2">(Em breve!) Receba e confirme pedidos direto no seu WhatsApp Business via API.</p>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-slate-50 py-24">
+            <div class="max-w-5xl mx-auto px-6">
+                <h2 class="text-center text-4xl font-bold text-slate-800 mb-16">Comece a vender em 3 passos</h2>
+                <div class="grid md:grid-cols-3 gap-12 text-center">
+                    <div>
+                        <span class="inline-block bg-red-600 text-white text-2xl font-bold w-16 h-16 rounded-full leading-[4rem]">1</span>
+                        <h3 class="text-2xl font-bold mt-5">Cadastre-se</h3>
+                        <p class="text-slate-500 mt-2">Escolha seu plano e crie a conta do seu restaurante em minutos.</p>
+                    </div>
+                    <div>
+                        <span class="inline-block bg-red-600 text-white text-2xl font-bold w-16 h-16 rounded-full leading-[4rem]">2</span>
+                        <h3 class="text-2xl font-bold mt-5">Personalize</h3>
+                        <p class="text-slate-500 mt-2">Faça upload da sua logo, cadastre seu cardápio, categorias e taxas de entrega.</p>
+                    </div>
+                    <div>
+                        <span class="inline-block bg-red-600 text-white text-2xl font-bold w-16 h-16 rounded-full leading-[4rem]">3</span>
+                        <h3 class="text-2xl font-bold mt-5">Venda</h3>
+                        <p class="text-slate-500 mt-2">Divulgue seu novo link (subdomínio) e comece a receber pedidos sem pagar comissão!</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="planos" class="py-24">
+            <div class="max-w-5xl mx-auto px-6">
+                <h2 class="text-center text-4xl font-bold text-slate-800 mb-4">Planos que cabem no seu bolso</h2>
+                <p class="text-center text-lg text-slate-500 mb-16">Sem surpresas, sem comissão. Apenas uma mensalidade fixa.</p>
+                
+                <div class="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+                    <div class="bg-white p-8 rounded-xl shadow-xl border-2 border-slate-100">
+                        <h3 class="text-2xl font-bold">Plano Essencial</h3>
+                        <p class="text-slate-500 mt-2">Para quem está começando</p>
+                        
+                        <p class="text-5xl font-extrabold text-slate-900 my-6">R$ 99<span class="text-xl font-semibold text-slate-500">/mês</span></p>
+                        
+                        <ul class="space-y-3">
+                            <li class="flex items-center gap-3"><span class="text-green-500">✔</span> Cardápio Digital</li>
+                            <li class="flex items-center gap-3"><span class="text-green-500">✔</span> Pedidos Ilimitados</li>
+                            <li class="flex items-center gap-3"><span class="text-green-500">✔</span> Gestor de Pedidos</li>
+                            <li class="flex items-center gap-3"><span class="text-green-500">✔</span> Cupons de Desconto</li>
+                        </ul>
+                        <a href="#contato" class="mt-8 block w-full text-center bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg">Quero o Essencial</a>
+                    </div>
+                    
+                    <div class="bg-white p-8 rounded-xl shadow-2xl border-2 border-red-600 relative">
+                        <span class="absolute -top-4 right-6 bg-red-600 text-white text-sm font-bold px-4 py-1 rounded-full">Mais Popular</span>
+                        <h3 class="text-2xl font-bold text-red-600">Plano Completo</h3>
+                        <p class="text-slate-500 mt-2">A solução completa para o seu negócio</p>
+                        
+                        <p class="text-5xl font-extrabold text-slate-900 my-6">R$ 149<span class="text-xl font-semibold text-slate-500">/mês</span></p>
+                        
+                        <ul class="space-y-3">
+                            <li class="flex items-center gap-3"><span class="text-green-500">✔</span> <b>Tudo do Essencial</b></li>
+                            <li class="flex items-center gap-3"><span class="text-green-500">✔</span> Taxas de Entrega por Bairro</li>
+                            <li class="flex items-center gap-3"><span class="text-green-500">✔</span> Portal RH (Funcionários e Vales)</li>
+                            <li class="flex items-center gap-3"><span class="text-green-500">✔</span> Integração WhatsApp (Em breve)</li>
+                        </ul>
+                        <a href="#contato" class="mt-8 block w-full text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg">Quero o Completo</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="contato" class="bg-slate-800">
+            <div class="max-w-4xl mx-auto px-6 py-24 text-center">
+                <h2 class="text-4xl font-bold text-white mb-6">
+                    Pronto para aumentar seu lucro com um delivery só seu?
+                </h2>
+                <p class="text-lg text-slate-300 mb-10">
+                    Sem taxas, sem pegadinhas. Seu restaurante com sua marca, suas regras e seu lucro.
+                </p>
+                <a href="https://wa.me/5500000000000" target="_blank" class="bg-green-500 hover:bg-green-400 text-white text-xl font-bold py-4 px-12 rounded-lg transition-colors shadow-lg">
+                    Fale com um consultor
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400">
+        <div class="max-w-7xl mx-auto px-6 py-10 text-center">
+            <p>&copy; 2025 BoraRangar. Todos os direitos reservados.</p>
+            <p class="text-sm mt-2">Uma plataforma de delivery completa para o seu negócio.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

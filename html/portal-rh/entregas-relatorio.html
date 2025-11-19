@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Entregas - BoraRangar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+    <div id="app-content" class="hidden">
+        <header class="bg-white shadow-md">
+            <div class="max-w-7xl mx-auto p-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-slate-800">Relatório de Entregas</h1>
+                <a href="rh-painel.html" class="text-sm text-blue-600 hover:underline">Voltar ao Painel de RH</a>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto p-4 md:p-8">
+            <section class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-bold text-slate-700 mb-4">Filtros do Relatório</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label for="filtro-data-inicio" class="block text-sm font-medium text-slate-600">Data Inicial</label>
+                        <input type="date" id="filtro-data-inicio" class="mt-1 block w-full p-2 border border-slate-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="filtro-data-fim" class="block text-sm font-medium text-slate-600">Data Final</label>
+                        <input type="date" id="filtro-data-fim" class="mt-1 block w-full p-2 border border-slate-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="filtro-entregador" class="block text-sm font-medium text-slate-600">Entregador</label>
+                        <select id="filtro-entregador" class="mt-1 block w-full p-2 border border-slate-300 rounded-md bg-white">
+                            <option value="">Todos os Entregadores</option>
+                            </select>
+                    </div>
+                    <div>
+                        <label for="filtro-pagamento" class="block text-sm font-medium text-slate-600">Status Pagamento</label>
+                        <select id="filtro-pagamento" class="mt-1 block w-full p-2 border border-slate-300 rounded-md bg-white">
+                            <option value="">Todos</option>
+                            <option value="pendente" selected>Pendente</option>
+                            <option value="pago">Pago</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="filter-btn" class="mt-4 w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Filtrar</button>
+            </section>
+
+            <section class="bg-white shadow-md rounded-lg overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-50 text-xs text-slate-700 uppercase">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Pedido</th>
+                            <th scope="col" class="px-6 py-3">Data</th>
+                            <th scope="col" class="px-6 py-3">Entregador</th>
+                            <th scope="col" class="px-6 py-3">Valor Pedido</th>
+                            <th scope="col" class="px-6 py-3">Pagamento</th>
+                            <th scope="col" class="px-6 py-3 text-right">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="entregas-table-body">
+                        </tbody>
+                </table>
+                <div id="loading-entregas" class="text-center p-6 text-slate-500"><p>Carregando...</p></div>
+            </section>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Seletores
+    const appContent = document.getElementById('app-content');
+    const filtroDataInicio = document.getElementById('filtro-data-inicio');
+    const filtroDataFim = document.getElementById('filtro-data-fim');
+    const filtroEntregador = document.getElementById('filtro-entregador');
+    const filtroPagamento = document.getElementById('filtro-pagamento');
+    const filterBtn = document.getElementById('filter-btn');
+    const tableBody = document.getElementById('entregas-table-body');
+    const loadingEntregas = document.getElementById('loading-entregas');
+
+    let appInitialized = false;
+
+    function initializeApp() {
+        if (appInitialized) return;
+        appInitialized = true;
+        appContent.classList.remove('hidden');
+
+        // Seta as datas padrão (hoje)
+        const today = new Date().toISOString().split('T')[0];
+        filtroDataInicio.value = today;
+        filtroDataFim.value = today;
+
+        // Carrega dados iniciais
+        fetchEntregadores();
+        fetchEntregas();
+
+        // Listeners
+        filterBtn.addEventListener('click', fetchEntregas);
+        tableBody.addEventListener('click', handleTableClick);
+    }
+
+    /**
+     * Busca os entregadores para popular o filtro
+     */
+    async function fetchEntregadores() {
+        try {
+            const response = await fetch('/usuario_api.php?action=get_entregadores', { credentials: 'include' });
+            if (!response.ok) throw new Error('Falha ao buscar entregadores');
+            const entregadores = await response.json();
+            
+            if (Array.isArray(entregadores)) {
+                entregadores.forEach(e => {
+                    filtroEntregador.innerHTML += `<option value="${e.id}">${e.nome}</option>`;
+                });
+            }
+        } catch (error) {
+            console.error("Erro fetchEntregadores:", error);
+            filtroEntregador.innerHTML += '<option value="">Erro ao carregar</option>';
+        }
+    }
+
+    /**
+     * Busca as entregas na API com base nos filtros
+     */
+    async function fetchEntregas() {
+        loadingEntregas.style.display = 'block';
+        loadingEntregas.innerHTML = '<p>Carregando entregas...</p>';
+        tableBody.innerHTML = '';
+
+        // Monta a URL com os filtros
+        const apiUrl = new URL('/pedidos_api.php', window.location.origin);
+        apiUrl.searchParams.append('data_inicio', filtroDataInicio.value);
+        apiUrl.searchParams.append('data_fim', filtroDataFim.value);
+        
+        // Se um entregador for selecionado, filtra por ele
+        if (filtroEntregador.value) {
+            apiUrl.searchParams.append('entregador_id', filtroEntregador.value);
+        }
+        
+        // Se um status de pagamento for selecionado, filtra por ele
+        if (filtroPagamento.value) {
+            apiUrl.searchParams.append('pagamento_status', filtroPagamento.value);
+        } else {
+            // Se "Todos" for selecionado, força a API a buscar apenas os que tiveram entrega
+            apiUrl.searchParams.append('entregador_id_filtro_geral', 'true'); // Usamos um truque aqui (que a API ignora, mas ok)
+            // A API já foi programada para, se não filtrar por 'pendente' ou 'pago',
+            // ela não filtrar por status de pagamento. Mas queremos SÓ os que saíram.
+            // A API já foi atualizada para buscar SÓ entregas se 'pagamento_status' for enviado.
+            // Se 'pagamento_status' não for enviado, ela busca tudo.
+            // Para este relatório, SÓ queremos pedidos com entregador.
+            // A `pedidos_api.php` v2 já faz isso: se `pagamento_status` é enviado, ela já filtra `entregador_id IS NOT NULL`.
+            // Se não for, não filtra. Precisamos forçar o filtro.
+            
+            // Re-lendo a API que fizemos...
+            // Ah! A API v2 *não* filtra por entregador_id se o filtro de pagamento estiver vazio.
+            // Vamos ajustar a API rapidinho...
+            
+            // NÃO, ESPERE. A API v2 está correta.
+            // Se `pagamento_status` for enviado, ela filtra `entregador_id IS NOT NULL`.
+            // Se `pagamento_status` estiver vazio, ela não filtra.
+            
+            // Ajuste simples: Se o filtro de pagamento estiver VAZIO ("Todos"),
+            // vamos mandar um status que NÃO existe, mas vamos mandar o de entregador.
+            // Isso é um "workaround". O ideal seria mexer na API de novo.
+            
+            // Vamos fazer o certo: Vou assumir que o gerente quer ver TUDO (concluído, cancelado, etc)
+            // que teve um entregador.
+            
+            // A `pedidos_api.php` v2 JÁ FAZ ISSO!
+            // O `GET` (Cenário 2) já retorna `entregador_nome`.
+            // Só precisamos filtrar no Javascript os que não têm entregador.
+            
+            // ... Ok, vamos fazer isso direito.
+            // A API (pedidos_api.php) precisa de um ajuste para aceitar `?apenas_entregas=true`.
+            
+            // Vamos fazer SEM mexer na API por enquanto.
+            // Vamos apenas filtrar os resultados que chegam.
+        }
+        
+        // Força a buscar todos os status de pedido (concluído, cancelado, etc)
+        apiUrl.searchParams.append('status', 'todos');
+
+        try {
+            const response = await fetch(apiUrl.toString(), { credentials: 'include' });
+            if (response.status === 403) {
+                window.location.href = '/painel/index.html';
+                return;
+            }
+            if (!response.ok) throw new Error('Falha ao buscar pedidos.');
+
+            let pedidos = await response.json();
+
+            // *** FILTRO MANUAL ***
+            // Como este relatório é SÓ de entregas, filtramos aqui
+            // todos os pedidos que de fato tiveram um entregador.
+            let entregas = pedidos.filter(p => p.entregador_id > 0);
+
+            renderEntregas(entregas);
+
+        } catch (error) {
+            console.error("Erro em fetchEntregas:", error);
+            loadingEntregas.innerHTML = `<p class="text-red-500 text-center">${error.message}</p>`;
+        }
+    }
+
+    /**
+     * Renderiza as entregas na tabela
+     */
+    function renderEntregas(entregas) {
+        if (entregas.length === 0) {
+            loadingEntregas.innerHTML = '<p class="text-slate-500 text-center">Nenhuma entrega encontrada para este filtro.</p>';
+            return;
+        }
+        
+        loadingEntregas.style.display = 'none';
+        tableBody.innerHTML = ''; 
+
+        entregas.forEach(entrega => {
+            const dataHora = entrega.created_at ? new Date(entrega.created_at).toLocaleString('pt-BR') : '--';
+            const valorFmt = parseFloat(entrega.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            
+            let statusPagamentoHTML = '';
+            let acaoHTML = '';
+
+            if (entrega.pagamento_entrega_status === 'pago') {
+                statusPagamentoHTML = `<span class="font-semibold text-green-600">Pago</span>`;
+                acaoHTML = `<span class="text-xs text-slate-400">Finalizado</span>`;
+            } else {
+                statusPagamentoHTML = `<span class="font-semibold text-red-600">Pendente</span>`;
+                acaoHTML = `<button data-id="${entrega.id}" class="btn-pagar text-sm bg-green-100 text-green-800 hover:bg-green-200 font-semibold py-1 px-3 rounded-md">
+                                Marcar como Pago
+                            </button>`;
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = 'bg-white border-b';
+            tr.innerHTML = `
+                <td class="px-6 py-4 font-mono font-bold text-red-600">#${entrega.id}</td>
+                <td class="px-6 py-4 text-slate-600">${dataHora}</td>
+                <td class="px-6 py-4 font-medium text-slate-900">${entrega.entregador_nome || 'Não definido'}</td>
+                <td class="px-6 py-4">${valorFmt}</td>
+                <td class="px-6 py-4">${statusPagamentoHTML}</td>
+                <td class="px-6 py-4 text-right">${acaoHTML}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    /**
+     * Lida com o clique no botão "Marcar como Pago"
+     */
+    async function handleTableClick(e) {
+        const payButton = e.target.closest('.btn-pagar');
+        if (!payButton) return;
+
+        const pedidoId = payButton.dataset.id;
+        if (!confirm(`Tem certeza que deseja marcar o pagamento da entrega #${pedidoId} como PAGO?`)) return;
+
+        payButton.disabled = true;
+        payButton.textContent = 'Pagando...';
+
+        try {
+            // Chama a API que JÁ fizemos, enviando apenas o novo status de pagamento
+            const response = await fetch(`/pedidos_api.php?id=${pedidoId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pagamento_entrega_status: 'pago' 
+                }),
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Erro desconhecido');
+
+            // Sucesso! Atualiza a tabela
+            fetchEntregas();
+
+        } catch (error) {
+            alert(`Erro: ${error.message}`);
+            payButton.disabled = false;
+            payButton.textContent = 'Marcar como Pago';
+        }
+    }
+
+    // --- Verificação de Sessão Inicial ---
+    fetch('/pedidos_api.php?status=ativos&limit=1', { credentials: 'include' })
+        .then(res => { 
+            if (res.ok) { 
+                initializeApp(); 
+            } else { 
+                window.location.href = '/painel/index.html'; 
+            } 
+        })
+        .catch(err => { 
+            console.error("Erro na verificação inicial:", err);
+            window.location.href = '/painel/index.html'; 
+        });
+});
+</script>
+</body>
+</html>

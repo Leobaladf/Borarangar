@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuários - Admin BoraRangar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100">
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto p-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-slate-800">Gerenciamento de Usuários</h1>
+            <div>
+                <a href="/index.html" class="text-sm text-blue-600 hover:underline">Ver Restaurantes</a>
+                <button id="logout-btn" class="ml-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-8">
+        <section class="bg-white shadow-md rounded-lg overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-slate-50 text-xs text-slate-700 uppercase">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Nome do Usuário</th>
+                        <th scope="col" class="px-6 py-3">E-mail</th>
+                        <th scope="col" class="px-6 py-3">Restaurante</th>
+                        <th scope="col" class="px-6 py-3">Cargo</th>
+                        <th scope="col" class="px-6 py-3 text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table-body">
+                    </tbody>
+            </table>
+            <div id="loading-users" class="text-center p-6 text-slate-500">
+                <p>Carregando usuários...</p>
+            </div>
+             <div id="error-loading" class="hidden text-center p-6 text-red-500">
+                <p>Erro ao carregar usuários.</p>
+            </div>
+            <div id="no-users" class="hidden text-center p-6 text-slate-500">
+                <p>Nenhum usuário encontrado.</p>
+            </div>
+        </section>
+    </main>
+
+    <div id="edit-user-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-xl font-bold mb-4">Editar Usuário</h2>
+            <form id="edit-user-form">
+                <input type="hidden" id="edit-user-id">
+                <div class="mb-4">
+                    <label for="edit-nome" class="block text-sm font-medium text-slate-700">Nome</label>
+                    <input type="text" id="edit-nome" required class="mt-1 w-full p-2 border border-slate-300 rounded-md">
+                </div>
+                <div class="mb-4">
+                    <label for="edit-email" class="block text-sm font-medium text-slate-700">E-mail</label>
+                    <input type="email" id="edit-email" required class="mt-1 w-full p-2 border border-slate-300 rounded-md">
+                </div>
+                <div class="mb-4">
+                    <label for="edit-role" class="block text-sm font-medium text-slate-700">Cargo</label>
+                    <select id="edit-role" required class="mt-1 w-full p-2 border border-slate-300 rounded-md bg-white">
+                        <option value="admin">Admin Plataforma</option> <option value="dono">Dono</option>
+                        <option value="gerente">Gerente</option>
+                        <option value="funcionario">Funcionário</option>
+                        <option value="caixa">Caixa</option>
+                        <option value="entregador">Entregador</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button type="button" id="cancel-edit-btn" class="bg-slate-200 hover:bg-slate-300 py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- VARIÁVEIS GLOBAIS DO SCRIPT ---
+            const usersTableBody = document.getElementById('users-table-body'); // CORREÇÃO: Garante que está aqui
+            const loadingUsers = document.getElementById('loading-users');
+            const errorLoading = document.getElementById('error-loading');
+            const noUsersMessage = document.getElementById('no-users');
+            const logoutBtn = document.getElementById('logout-btn');
+            const editModal = document.getElementById('edit-user-modal');
+            const editForm = document.getElementById('edit-user-form');
+            const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+            // --- FUNÇÃO PARA BUSCAR E RENDERIZAR USUÁRIOS ---
+            async function fetchUsers() {
+                loadingUsers.style.display = 'block';
+                errorLoading.classList.add('hidden');
+                noUsersMessage.classList.add('hidden');
+                // CORREÇÃO: Garante que usa a variável correta aqui
+                if (usersTableBody) {
+                    usersTableBody.innerHTML = ''; 
+                } else {
+                    console.error("Elemento 'users-table-body' não encontrado!");
+                    loadingUsers.textContent = "Erro interno na página (tbody não encontrado).";
+                    return; // Interrompe se o tbody não existe
+                }
+
+                try {
+                    // Esta chamada verifica a sessão implicitamente (api exige login)
+                    const response = await fetch('/usuario_api.php?action=get_users'); // Garante action=get_users
+
+                    if (response.status === 403) {
+                        window.location.href = '/login.html';
+                        return;
+                    }
+                    if (!response.ok) {
+                        const errorData = await response.json(); // Tenta pegar a mensagem de erro da API
+                        throw new Error(errorData.message || `Falha ao buscar usuários (${response.status})`);
+                    }
+
+                    const users = await response.json();
+                    renderUsers(users);
+
+                } catch (error) {
+                    console.error("Erro em fetchUsers:", error);
+                    errorLoading.querySelector('p').textContent = `Erro ao carregar usuários: ${error.message}`;
+                    errorLoading.classList.remove('hidden');
+                } finally {
+                     loadingUsers.style.display = 'none';
+                }
+            }
+
+            // --- FUNÇÃO PARA RENDERIZAR A TABELA ---
+            function renderUsers(users) {
+                // Limpa a tabela antes de preencher (redundante com o fetchUsers, mas seguro)
+                 if (!usersTableBody) return; // Checagem extra
+                 usersTableBody.innerHTML = ''; 
+
+                if (!Array.isArray(users) || users.length === 0) {
+                    noUsersMessage.classList.remove('hidden');
+                    return;
+                }
+
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.className = 'bg-white border-b hover:bg-slate-50';
+                    // Tratamento defensivo para nome_restaurante que pode ser null
+                    const nomeRestaurante = user.nome_restaurante || '<i class="text-slate-400">Plataforma</i>'; // Mostra Plataforma se for admin
+                    row.innerHTML = `
+                        <td class="px-6 py-4 font-medium text-slate-900">${user.nome || 'N/A'}</td>
+                        <td class="px-6 py-4">${user.email || 'N/A'}</td>
+                        <td class="px-6 py-4 text-slate-600">${nomeRestaurante}</td>
+                        <td class="px-6 py-4 capitalize">${user.role || 'N/A'}</td>
+                        <td class="px-6 py-4 text-center space-x-2">
+                            <button data-id="${user.id}" data-nome="${user.nome}" data-email="${user.email}" data-role="${user.role}" class="edit-btn text-xs bg-yellow-100 text-yellow-800 hover:bg-yellow-200 font-semibold py-1 px-3 rounded-md">Editar</button>
+                            <button data-id="${user.id}" data-nome="${user.nome}" class="delete-btn text-xs bg-red-100 text-red-800 hover:bg-red-200 font-semibold py-1 px-3 rounded-md">Excluir</button>
+                        </td>
+                    `;
+                    // CORREÇÃO: Garante que usa a variável correta aqui
+                    usersTableBody.appendChild(row);
+                });
+            }
+
+            // --- LISTENERS DE EVENTOS ---
+
+            // Listener para botões na tabela (Editar/Excluir)
+            // CORREÇÃO: Garante que usa a variável correta aqui
+            if (usersTableBody) {
+                usersTableBody.addEventListener('click', async (e) => {
+                    const target = e.target;
+                    const id = target.dataset.id;
+                    if (target.classList.contains('delete-btn')) {
+                        const nome = target.dataset.nome;
+                        if (confirm(`Tem certeza que deseja excluir o usuário "${nome}"?`)) {
+                            try {
+                                const response = await fetch(`/usuario_api.php?id=${id}`, { method: 'DELETE' });
+                                const data = await response.json();
+                                if (response.ok && data.status === 'success') {
+                                    fetchUsers(); // Recarrega a lista
+                                } else { throw new Error(data.message || 'Erro desconhecido ao excluir.'); }
+                            } catch (error) { alert(`Erro ao excluir: ${error.message}`); }
+                        }
+                    }
+                    if (target.classList.contains('edit-btn')) {
+                        // Preenche o modal de edição
+                        document.getElementById('edit-user-id').value = id || '';
+                        document.getElementById('edit-nome').value = target.dataset.nome || '';
+                        document.getElementById('edit-email').value = target.dataset.email || '';
+                        document.getElementById('edit-role').value = target.dataset.role || '';
+                        editModal.classList.remove('hidden');
+                    }
+                });
+            }
+
+            // Listener para o formulário de edição (dentro do modal)
+            editForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('edit-user-id').value;
+                const nome = document.getElementById('edit-nome').value;
+                const email = document.getElementById('edit-email').value;
+                const role = document.getElementById('edit-role').value;
+                try {
+                    const response = await fetch(`/usuario_api.php?id=${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nome, email, role }) // Envia como JSON
+                    });
+                    const data = await response.json();
+                    if (response.ok && data.status === 'success') {
+                        editModal.classList.add('hidden'); // Fecha modal
+                        fetchUsers(); // Recarrega lista
+                    } else { throw new Error(data.message || 'Erro desconhecido ao salvar.'); }
+                } catch (error) { alert(`Erro ao salvar: ${error.message}`); }
+            });
+
+            // Listener para o botão Cancelar do modal
+            cancelEditBtn.addEventListener('click', () => { editModal.classList.add('hidden'); });
+
+            // Listener para o botão Sair
+            logoutBtn.addEventListener('click', () => { 
+                // Idealmente, chamaria /logout.php que destrói a sessão no backend
+                 window.location.href = '/login.html'; // Redireciona para o login do admin
+            });
+
+            // --- INICIALIZAÇÃO ---
+            fetchUsers(); // Chama a função para buscar os usuários quando a página carrega
+        });
+    </script>
+</body>
+</html>

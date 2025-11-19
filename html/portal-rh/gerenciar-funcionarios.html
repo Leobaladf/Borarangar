@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Funcionários - BoraRangar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+    <div id="app-content" class="hidden">
+        <header class="bg-white shadow-md">
+            <div class="max-w-7xl mx-auto p-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-slate-800">Gerenciar Funcionários</h1>
+                <a href="rh-painel.html" class="text-sm text-blue-600 hover:underline">Voltar ao Painel de RH</a>
+            </div>
+        </header>
+        <main class="max-w-7xl mx-auto p-4 md:p-8">
+            <section class="bg-white shadow-md rounded-lg p-6 mb-8">
+                <h2 class="text-xl font-bold text-slate-700 mb-4">Adicionar Novo Funcionário</h2>
+                <form id="add-user-form" class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <input type="text" name="nome" placeholder="Nome do Funcionário" required class="p-2 border rounded">
+                    <input type="email" name="email" placeholder="E-mail" required class="p-2 border rounded">
+                    <input type="password" name="senha" placeholder="Senha" required class="p-2 border rounded">
+                    <select name="role" class="p-2 border rounded bg-white">
+                        <option value="funcionario">Funcionário</option>
+                        <option value="caixa">Caixa</option>
+                        <option value="entregador">Entregador</option>
+                        <option value="gerente">Gerente</option>
+                    </select>
+                    <button type="submit" class="md:col-span-2 w-full bg-green-600 text-white font-bold py-2 rounded">Adicionar Funcionário</button>
+                </form>
+                <p id="user-form-message" class="text-sm h-5 mt-4"></p>
+            </section>
+            
+            <section class="bg-white shadow-md rounded-lg overflow-x-auto">
+                <h2 class="text-xl font-bold text-slate-700 p-4 border-b">Funcionários Cadastrados</h2>
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-6 py-3">Nome</th>
+                            <th class="px-6 py-3">E-mail</th>
+                            <th class="px-6 py-3">Cargo</th>
+                            <th class="px-6 py-3 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        </tbody>
+                </table>
+                <div id="loading-users" class="text-center p-6 text-slate-500"><p>Carregando...</p></div>
+            </section>
+        </main>
+    </div>
+
+    <div id="edit-user-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-xl font-bold text-slate-700 mb-4">Editar Funcionário</h2>
+            <form id="edit-user-form">
+                <input type="hidden" id="edit-user-id">
+                <div class="mb-4">
+                    <label for="edit-nome" class="block text-sm font-medium text-slate-600">Nome</label>
+                    <input type="text" id="edit-nome" name="nome" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md">
+                </div>
+                <div class="mb-4">
+                    <label for="edit-email" class="block text-sm font-medium text-slate-600">E-mail</label>
+                    <input type="email" id="edit-email" name="email" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md">
+                </div>
+                <div class="mb-4">
+                    <label for="edit-role" class="block text-sm font-medium text-slate-600">Cargo</label>
+                    <select id="edit-role" name="role" class="mt-1 block w-full p-2 border border-slate-300 rounded-md bg-white">
+                        <option value="funcionario">Funcionário</option>
+                        <option value="caixa">Caixa</option>
+                        <option value="entregador">Entregador</option>
+                        <option value="gerente">Gerente</option>
+                    </select>
+                </div>
+                <p id="edit-form-message" class="text-sm h-5 mb-4"></p>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button type="button" class="btn-close-modal bg-slate-200 py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const appContent = document.getElementById('app-content');
+        
+        // Seletores do formulário de ADICIONAR
+        const usersTableBody = document.getElementById('users-table-body');
+        const loadingUsers = document.getElementById('loading-users');
+        const addUserForm = document.getElementById('add-user-form');
+        const userFormMessage = document.getElementById('user-form-message');
+
+        // --- INÍCIO: Seletores do MODAL (Novos) ---
+        const editUserModal = document.getElementById('edit-user-modal');
+        const editUserForm = document.getElementById('edit-user-form');
+        const editUserId = document.getElementById('edit-user-id');
+        const editNome = document.getElementById('edit-nome');
+        const editEmail = document.getElementById('edit-email');
+        const editRole = document.getElementById('edit-role');
+        const editFormMessage = document.getElementById('edit-form-message');
+        const closeButtons = document.querySelectorAll('.btn-close-modal');
+        // --- FIM: Seletores do MODAL ---
+
+        let allUsersData = []; // Cache para guardar os dados dos usuários
+
+        function initializeApp() {
+            appContent.classList.remove('hidden');
+            fetchUsers();
+            
+            // Listener do formulário de ADICIONAR
+            addUserForm.addEventListener('submit', handleAddUser);
+            
+            // --- INÍCIO: Listeners do MODAL (Novos) ---
+            
+            // Listener do formulário de EDITAR
+            editUserForm.addEventListener('submit', handleEditUser);
+            
+            // Listener para fechar o modal
+            closeButtons.forEach(btn => btn.addEventListener('click', () => editUserModal.classList.add('hidden')));
+            
+            // Listener na tabela para capturar cliques de "Editar"
+            usersTableBody.addEventListener('click', (e) => {
+                const editButton = e.target.closest('.btn-edit-user');
+                if (editButton) {
+                    const userId = editButton.dataset.id;
+                    openEditModal(userId);
+                }
+            });
+            // --- FIM: Listeners do MODAL ---
+        }
+        
+        async function fetchUsers() {
+            try {
+                // A API é a mesma, ela lista os funcionários do gerente
+                const response = await fetch('/usuario_api.php?action=get_my_employees', { credentials: 'include' });
+                if (!response.ok) {
+                    if (response.status === 403) window.location.href = '/painel/index.html';
+                    throw new Error('Falha ao buscar usuários');
+                }
+                const users = await response.json();
+                allUsersData = users; // Salva os dados no cache
+                renderUsers(users);
+            } catch (error) { 
+                loadingUsers.textContent = `Erro: ${error.message}`; 
+            }
+        }
+        
+        function renderUsers(users) {
+            loadingUsers.style.display = 'none'; 
+            usersTableBody.innerHTML = ''; 
+            if (users.length === 0) { 
+                usersTableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Nenhum funcionário cadastrado.</td></tr>'; 
+                return; 
+            } 
+            users.forEach(user => { 
+                usersTableBody.innerHTML += `
+                    <tr class="border-b">
+                        <td class="px-6 py-4">${user.nome}</td>
+                        <td class="px-6 py-4">${user.email}</td>
+                        <td class="px-6 py-4 capitalize">${user.role}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button data-id="${user.id}" class="btn-edit-user text-sm bg-blue-100 text-blue-800 hover:bg-blue-200 font-semibold py-1 px-3 rounded-md">
+                                Editar
+                            </button>
+                        </td>
+                    </tr>`; 
+            });
+        }
+        
+        async function handleAddUser(e) {
+            e.preventDefault(); 
+            userFormMessage.textContent = 'Cadastrando...'; 
+            userFormMessage.className = 'text-sm h-5 mt-4 text-blue-600';
+            const formData = new FormData(addUserForm); 
+            formData.append('action', 'registrar'); 
+            try { 
+                const response = await fetch('/usuario_api.php', { method: 'POST', body: formData, credentials: 'include' }); 
+                const data = await response.json(); 
+                if (response.ok) { 
+                    userFormMessage.textContent = 'Funcionário cadastrado com sucesso!'; 
+                    userFormMessage.className = 'text-sm h-5 mt-4 text-green-600';
+                    addUserForm.reset(); 
+                    fetchUsers(); 
+                } else { 
+                    throw new Error(data.message); 
+                } 
+            } catch (error) { 
+                userFormMessage.textContent = `Erro: ${error.message}`; 
+                userFormMessage.className = 'text-sm h-5 mt-4 text-red-600';
+            }
+        }
+
+        // --- INÍCIO: Funções do MODAL (Novas) ---
+
+        /**
+         * Abre o modal e preenche com os dados do usuário
+         */
+        function openEditModal(userId) {
+            const user = allUsersData.find(u => u.id == userId);
+            if (!user) {
+                alert('Erro: Não foi possível encontrar os dados deste usuário.');
+                return;
+            }
+            
+            // Preenche o formulário
+            editUserId.value = user.id;
+            editNome.value = user.nome;
+            editEmail.value = user.email;
+            editRole.value = user.role;
+            editFormMessage.textContent = '';
+            
+            // Abre o modal
+            editUserModal.classList.remove('hidden');
+        }
+
+        /**
+         * Lida com o envio do formulário de EDIÇÃO
+         */
+        async function handleEditUser(e) {
+            e.preventDefault();
+            editFormMessage.textContent = 'Salvando...';
+            editFormMessage.className = 'text-sm h-5 mb-4 text-blue-600';
+
+            const userId = editUserId.value;
+            const data = {
+                nome: editNome.value,
+                email: editEmail.value,
+                role: editRole.value
+            };
+
+            try {
+                // Chama a API com o método PUT
+                const response = await fetch(`/usuario_api.php?id=${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Erro desconhecido');
+
+                editFormMessage.textContent = 'Salvo com sucesso!';
+                editFormMessage.className = 'text-sm h-5 mb-4 text-green-600';
+
+                // Recarrega a tabela e fecha o modal
+                fetchUsers();
+                setTimeout(() => {
+                    editUserModal.classList.add('hidden');
+                }, 1000);
+
+            } catch (error) {
+                editFormMessage.textContent = `Erro: ${error.message}`;
+                editFormMessage.className = 'text-sm h-5 mb-4 text-red-600';
+            }
+        }
+
+        // --- FIM: Funções do MODAL ---
+        
+        // Verificação inicial (O "Ping")
+        fetch('/pedidos_api.php?status=ativos&limit=1', { credentials: 'include' })
+            .then(res => { 
+                if (res.ok) { 
+                    initializeApp(); 
+                } else { 
+                    window.location.href = '/painel/index.html'; 
+                } 
+            })
+            .catch(err => { 
+                console.error("Erro na verificação inicial:", err);
+                window.location.href = '/painel/index.html'; 
+            });
+    });
+</script>
+</body>
+</html>

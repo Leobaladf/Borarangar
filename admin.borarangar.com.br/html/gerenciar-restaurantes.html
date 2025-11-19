@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Restaurantes - Admin BoraRangar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto p-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-slate-800">Gerenciamento de Restaurantes</h1>
+            <div>
+                <a href="/index.html" class="text-sm text-blue-600 hover:underline">Voltar ao Painel</a>
+                <button id="logout-btn" class="ml-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-8">
+        <section class="mb-8 text-right">
+             <button id="open-add-restaurant-modal" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-all">
+                + Adicionar Novo Restaurante
+             </button>
+        </section>
+
+        <section class="bg-white shadow-md rounded-lg mt-8">
+            <h2 class="text-xl font-bold text-slate-700 p-4 border-b">Restaurantes Cadastrados</h2>
+            <div id="restaurant-list" class="divide-y divide-slate-200">
+                <p id="loading-restaurants" class="p-4 text-slate-500">Carregando restaurantes...</p>
+                 <div id="error-loading-restaurants" class="hidden text-center p-6 text-red-500">
+                    <p>Erro ao carregar restaurantes.</p>
+                </div>
+                <div id="no-restaurants" class="hidden text-center p-6 text-slate-500">
+                    <p>Nenhum restaurante cadastrado ainda.</p>
+                </div>
+                 </div>
+        </section>
+    </main>
+
+    <div id="add-restaurant-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+            <h2 class="text-xl font-bold text-slate-700 mb-4">Adicionar Novo Restaurante</h2>
+            <form id="add-restaurant-form">
+                <div class="mb-4">
+                    <label for="add-nome" class="block text-sm font-medium text-slate-600">Nome do Restaurante</label>
+                    <input type="text" id="add-nome" name="nome" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm">
+                </div>
+                <div class="mb-4">
+                    <label for="add-subdominio" class="block text-sm font-medium text-slate-600">Subdomínio</label>
+                    <input type="text" id="add-subdominio" name="subdominio" required class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm" placeholder="ex: nomedaloja (letras minúsculas, sem espaços)">
+                     <p class="text-xs text-slate-500 mt-1">Será usado como nomedaloja.borarangar.com.br</p>
+                </div>
+                 <p id="restaurant-form-message" class="text-sm h-5 mb-4"></p>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button type="button" class="btn-close-modal bg-slate-200 py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar Restaurante</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-restaurant-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-xl font-bold mb-4">Editar Restaurante</h2>
+            <form id="edit-restaurant-form">
+                <input type="hidden" id="edit-restaurant-id">
+                <div class="mb-4">
+                    <label for="edit-nome" class="block text-sm font-medium">Nome</label>
+                    <input type="text" id="edit-nome" required class="mt-1 w-full p-2 border rounded-md">
+                </div>
+                <div class="mb-4">
+                    <label for="edit-subdominio" class="block text-sm font-medium">Subdomínio</label>
+                    <input type="text" id="edit-subdominio" required class="mt-1 w-full p-2 border rounded-md">
+                </div>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button type="button" class="btn-close-modal bg-slate-200 py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-lg">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Referências aos elementos
+            const restaurantList = document.getElementById('restaurant-list');
+            const loadingRestaurants = document.getElementById('loading-restaurants');
+            const errorLoadingRestaurants = document.getElementById('error-loading-restaurants');
+            const noRestaurantsMessage = document.getElementById('no-restaurants');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            // Modais e Formulários
+            const addRestaurantModal = document.getElementById('add-restaurant-modal');
+            const editModal = document.getElementById('edit-restaurant-modal');
+            const addRestaurantForm = document.getElementById('add-restaurant-form');
+            const editForm = document.getElementById('edit-restaurant-form');
+            const restaurantFormMessage = document.getElementById('restaurant-form-message');
+
+            // Botões que abrem/fecham modais
+            const openAddRestaurantBtn = document.getElementById('open-add-restaurant-modal');
+            const closeButtons = document.querySelectorAll('.btn-close-modal');
+
+            // --- FUNÇÃO DE VERIFICAÇÃO DE SESSÃO E BUSCA ---
+            async function fetchRestaurants() {
+                loadingRestaurants.style.display = 'block';
+                errorLoadingRestaurants.classList.add('hidden');
+                noRestaurantsMessage.classList.add('hidden');
+                restaurantList.innerHTML = ''; 
+                restaurantList.appendChild(loadingRestaurants); 
+
+                try {
+                    const response = await fetch('/api.php'); 
+                    if (response.status === 403) { window.location.href = '/login.html'; return; }
+                    if (!response.ok) { throw new Error('Falha ao buscar restaurantes.'); }
+                    const restaurantes = await response.json();
+                    renderRestaurants(restaurantes);
+                } catch (error) {
+                    console.error(error);
+                    errorLoadingRestaurants.querySelector('p').textContent = `Erro: ${error.message}`;
+                    errorLoadingRestaurants.classList.remove('hidden');
+                } finally {
+                     loadingRestaurants.style.display = 'none'; 
+                }
+            }
+
+            // --- FUNÇÃO DE RENDERIZAÇÃO DA LISTA ---
+            function renderRestaurants(restaurantes) {
+                restaurantList.innerHTML = ''; 
+                if (restaurantes.length === 0) {
+                    restaurantList.appendChild(noRestaurantsMessage); 
+                    noRestaurantsMessage.classList.remove('hidden');
+                    return;
+                }
+                restaurantes.forEach(r => {
+                    const div = document.createElement('div');
+                    div.className = 'p-4 flex flex-col sm:flex-row justify-between sm:items-center border-b last:border-b-0'; 
+                    div.innerHTML = `
+                        <div class="mb-2 sm:mb-0">
+                            <p class="font-bold text-slate-800">${r.nome} <span class="text-sm font-normal text-slate-500">(ID: ${r.id})</span></p>
+                            <a href="https://${r.subdominio}.borarangar.com.br" target="_blank" class="text-sm text-blue-600 hover:underline">${r.subdominio}.borarangar.com.br</a>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-semibold px-2 py-1 rounded-full ${r.licenca_status === 'ativa' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                ${r.licenca_status || 'pendente'} 
+                            </span>
+                            <button data-id="${r.id}" data-nome="${r.nome}" data-subdominio="${r.subdominio}" class="edit-btn text-xs bg-yellow-100 text-yellow-800 hover:bg-yellow-200 py-1 px-3 rounded-md">Editar</button>
+                            <button data-id="${r.id}" data-nome="${r.nome}" class="delete-btn text-xs bg-red-100 text-red-800 hover:bg-red-200 py-1 px-3 rounded-md">Excluir</button>
+                        </div>
+                    `;
+                    restaurantList.appendChild(div);
+                });
+            }
+
+            // --- FUNÇÕES PARA ABRIR/FECHAR MODAIS ---
+            function openModal(modalElement) { if (modalElement) modalElement.classList.remove('hidden'); }
+            function closeModal(modalElement) { if (modalElement) modalElement.classList.add('hidden'); }
+
+             // --- OUVINTES DE EVENTOS ---
+            openAddRestaurantBtn.addEventListener('click', () => openModal(addRestaurantModal));
+            closeButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    closeModal(addRestaurantModal);
+                    closeModal(editModal);
+                });
+            });
+
+            addRestaurantForm.addEventListener('submit', async (e) => { 
+                e.preventDefault();
+                restaurantFormMessage.textContent = 'Cadastrando...';
+                restaurantFormMessage.className = 'text-sm h-5 mb-4 text-blue-600';
+                const formData = new FormData(addRestaurantForm);
+                try {
+                    const response = await fetch('/api.php', { method: 'POST', body: formData });
+                    const data = await response.json();
+                    if (response.ok && data.status === 'success') {
+                        restaurantFormMessage.textContent = 'Restaurante cadastrado!';
+                        restaurantFormMessage.className = 'text-sm h-5 mb-4 text-green-600';
+                        addRestaurantForm.reset(); 
+                        fetchRestaurants(); 
+                        setTimeout(() => { 
+                           closeModal(addRestaurantModal);
+                           restaurantFormMessage.textContent = ''; 
+                        }, 1500);
+                    } else { throw new Error(data.message || 'Erro desconhecido.'); }
+                } catch (error) {
+                    restaurantFormMessage.textContent = `Erro: ${error.message}`;
+                    restaurantFormMessage.className = 'text-sm h-5 mb-4 text-red-600';
+                }
+            });
+
+            restaurantList.addEventListener('click', async (e) => {
+                const target = e.target;
+                const id = target.dataset.id;
+                if (target.classList.contains('delete-btn')) { 
+                    const nome = target.dataset.nome;
+                    if (confirm(`Tem certeza que deseja excluir o restaurante "${nome}"? Esta ação não pode ser desfeita.`)) {
+                        try {
+                            const response = await fetch(`/api.php?id=${id}`, { method: 'DELETE' });
+                            const data = await response.json();
+                            if (data.status === 'success') {
+                                fetchRestaurants();
+                            } else { throw new Error(data.message); }
+                        } catch (error) { alert(`Erro ao excluir: ${error.message}`); }
+                    }
+                }
+                if (target.classList.contains('edit-btn')) {
+                    document.getElementById('edit-restaurant-id').value = id;
+                    document.getElementById('edit-nome').value = target.dataset.nome;
+                    document.getElementById('edit-subdominio').value = target.dataset.subdominio;
+                    openModal(editModal); 
+                }
+            });
+
+            editForm.addEventListener('submit', async (e) => { 
+                e.preventDefault();
+                const id = document.getElementById('edit-restaurant-id').value;
+                const nome = document.getElementById('edit-nome').value;
+                const subdominio = document.getElementById('edit-subdominio').value;
+                try {
+                    const response = await fetch(`/api.php?id=${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nome, subdominio })
+                    });
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        closeModal(editModal); 
+                        fetchRestaurants(); 
+                    } else { throw new Error(data.message); }
+                } catch (error) { alert(`Erro ao salvar: ${error.message}`); }
+            });
+
+            logoutBtn.addEventListener('click', () => { window.location.href = '/login.html'; });
+
+            // --- INICIALIZAÇÃO ---
+            fetchRestaurants(); 
+        });
+    </script>
+</body>
+</html>

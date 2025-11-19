@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Clientes - Admin BoraRangar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100">
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto p-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-slate-800">Gerenciamento de Clientes</h1>
+            <div>
+                <a href="/index.html" class="text-sm text-blue-600 hover:underline">Ver Restaurantes</a>
+                <button id="logout-btn" class="ml-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-8">
+        <section class="bg-white shadow-md rounded-lg overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-slate-50 text-xs text-slate-700 uppercase">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Nome do Cliente</th>
+                        <th scope="col" class="px-6 py-3">E-mail</th>
+                        <th scope="col" class="px-6 py-3">Telefone</th>
+                        <th scope="col" class="px-6 py-3">Restaurante</th>
+                        <th scope="col" class="px-6 py-3">Data Cadastro</th>
+                        </tr>
+                </thead>
+                <tbody id="clients-table-body">
+                    </tbody>
+            </table>
+            <div id="loading-clients" class="text-center p-6 text-slate-500">
+                <p>Carregando clientes...</p>
+            </div>
+            <div id="error-loading" class="hidden text-center p-6 text-red-500">
+                <p>Erro ao carregar clientes ou acesso negado.</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const clientsTableBody = document.getElementById('clients-table-body');
+            const loadingClients = document.getElementById('loading-clients');
+            const errorLoading = document.getElementById('error-loading');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            async function fetchClients() {
+                loadingClients.style.display = 'block';
+                errorLoading.classList.add('hidden');
+                clientsTableBody.innerHTML = ''; // Limpa tabela
+
+                try {
+                    // Chama a API com a nova action
+                    const response = await fetch('/usuario_api.php?action=get_clients'); 
+                    
+                    if (response.status === 403) {
+                         // Se der não autorizado, redireciona para o login do admin
+                         window.location.href = '/login.html'; 
+                         return;
+                    }
+                    if (!response.ok) {
+                        throw new Error(`Falha ao buscar clientes: ${response.statusText}`);
+                    }
+                    
+                    const clients = await response.json();
+                    renderClients(clients);
+
+                } catch (error) {
+                    console.error("Erro ao carregar clientes:", error);
+                    loadingClients.style.display = 'none';
+                    errorLoading.classList.remove('hidden');
+                    errorLoading.querySelector('p').textContent = `Erro ao carregar clientes: ${error.message}`;
+                }
+            }
+
+            function renderClients(clients) {
+                loadingClients.style.display = 'none';
+                if (!Array.isArray(clients) || clients.length === 0) {
+                    clientsTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-slate-500">Nenhum cliente cadastrado.</td></tr>'; // Ajuste colspan se adicionar colunas
+                    return;
+                }
+
+                clients.forEach(client => {
+                    const row = document.createElement('tr');
+                    row.className = 'bg-white border-b hover:bg-slate-50';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 font-medium text-slate-900">${client.nome || 'N/A'}</td>
+                        <td class="px-6 py-4">${client.email || 'N/A'}</td>
+                        <td class="px-6 py-4">${client.telefone || 'N/A'}</td>
+                        <td class="px-6 py-4 text-slate-600">${client.nome_restaurante || 'N/A'}</td>
+                        <td class="px-6 py-4 text-slate-500 text-xs">${client.created_at || 'N/A'}</td>
+                        
+                    `;
+                    // Para adicionar o endereço:
+                    // <td class="px-6 py-4 text-xs text-slate-500">${client.endereco || 'N/A'}</td>
+                    clientsTableBody.appendChild(row);
+                });
+            }
+
+            // Listener de Logout (igual ao de usuarios.html)
+            logoutBtn.addEventListener('click', () => {
+                // Aqui você pode adicionar uma chamada à API para invalidar a sessão no backend se desejar
+                window.location.href = '/login.html'; 
+            });
+
+            // Inicia a busca de clientes
+            fetchClients();
+        });
+    </script>
+</body>
+</html>

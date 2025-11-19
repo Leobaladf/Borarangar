@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - BoraRangar</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background-color: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center;}
+        h1 { color: #333; }
+        input { width: 100%; padding: 0.75rem; margin-top: 1rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 0.75rem; margin-top: 1.5rem; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+        #error-message { color: red; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Acesso ao Painel</h1>
+        <form id="login-form">
+            <input type="email" id="email" name="email" placeholder="Seu e-mail" required>
+            <input type="password" id="senha" name="senha" placeholder="Sua senha" required>
+            <input type="hidden" name="action" value="login">
+            <button type="submit">Entrar</button>
+        </form>
+        <div id="error-message"></div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Impede o envio padrão do formulário
+
+            const form = event.target;
+            const formData = new FormData(form);
+            const errorMessageDiv = document.getElementById('error-message');
+
+            fetch('usuario_api.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Se o login for bem-sucedido, redireciona para o painel
+                    window.location.href = 'dashboard.html';
+                } else {
+                    // Se falhar, mostra a mensagem de erro
+                    errorMessageDiv.textContent = data.message || 'Ocorreu um erro.';
+                }
+            })
+            .catch(error => {
+                errorMessageDiv.textContent = 'Erro de conexão com a API.';
+            });
+        });
+    </script>
+</body>
+</html>

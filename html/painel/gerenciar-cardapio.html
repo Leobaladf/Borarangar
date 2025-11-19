@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Cardápio e Categorias - BoraRangar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+    <div id="app-content" class="hidden">
+        <header class="bg-white shadow-md">
+            <div class="max-w-5xl mx-auto p-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-slate-800">Cardápio e Categorias</h1>
+                <a href="dashboard.html" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg">Voltar ao Painel</a>
+            </div>
+        </header>
+
+        <main class="max-w-5xl mx-auto p-4 md:p-8">
+            <section class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-bold text-slate-700 mb-4">Gerenciar Categorias</h2>
+                <form id="add-category-form" class="flex flex-col sm:flex-row gap-4 mb-4">
+                    <input type="text" name="nome" placeholder="Nome da Nova Categoria" required class="flex-grow p-2 border border-slate-300 rounded">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded">Adicionar Categoria</button>
+                </form>
+                <div id="category-list" class="divide-y divide-slate-200">
+                    <p id="loading-categories" class="p-4 text-slate-500">Carregando categorias...</p>
+                </div>
+            </section>
+
+            <section class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-bold text-slate-700 mb-4">Adicionar Novo Item ao Cardápio</h2>
+                <form id="add-item-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" name="nome" placeholder="Nome do Item" required class="p-2 border border-slate-300 rounded">
+                    <input type="number" name="preco" step="0.01" placeholder="Preço (ex: 25.50)" required class="p-2 border border-slate-300 rounded">
+                   <select name="categoria" id="category-select" required class="p-2 border border-slate-300 rounded bg-white">
+                        <option value="">Selecione uma categoria...</option> 
+                   </select>
+                   <div>
+                       <label for="add-imagem" class="text-sm font-medium text-slate-600">Imagem do Item</label>
+                       <input type="file" name="imagem" id="add-imagem" accept="image/*" class="w-full text-sm">
+                   </div>
+                    <textarea name="descricao" placeholder="Descrição do item" rows="3" class="p-2 border border-slate-300 rounded md:col-span-2"></textarea>
+                    <button type="submit" class="md:col-span-2 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded">Adicionar Item</button>
+                </form>
+                <p id="item-form-message" class="text-sm h-5 mt-4"></p>
+            </section>
+
+            <section class="bg-white shadow-md rounded-lg">
+                <h2 class="text-xl font-bold text-slate-700 p-4 border-b">Itens Cadastrados</h2>
+                <div id="menu-list" class="divide-y divide-slate-200">
+                    <p id="loading-items" class="p-4 text-slate-500">Carregando cardápio...</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="edit-item-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+             <h2 class="text-xl font-bold text-slate-700 mb-4">Editar Item do Cardápio</h2>
+             <form id="edit-item-form">
+                <input type="hidden" id="edit-item-id" name="id">
+                <input type="hidden" name="action" value="update">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="edit-nome" name="nome" placeholder="Nome do Item" required class="p-2 border border-slate-300 rounded">
+                    <input type="number" id="edit-preco" name="preco" step="0.01" placeholder="Preço" required class="p-2 border border-slate-300 rounded">
+                    <select name="categoria" id="edit-category-select" required class="p-2 border border-slate-300 rounded bg-white">
+                         <option value="">Selecione...</option>
+                    </select>
+                    <div>
+                        <label for="edit-imagem" class="text-sm font-medium text-slate-600">Trocar Imagem (Opcional)</label>
+                        <input type="file" name="imagem" id="edit-imagem" accept="image/*" class="w-full text-sm">
+                    </div>
+                    <textarea id="edit-descricao" name="descricao" placeholder="Descrição" rows="3" class="p-2 border border-slate-300 rounded md:col-span-2"></textarea>
+                </div>
+                <p id="edit-item-message" class="text-sm h-5 mt-4"></p>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button type="button" id="cancel-edit-btn" class="bg-slate-200 py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar Alterações</button>
+                </div>
+             </form>
+        </div>
+    </div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const appContent = document.getElementById('app-content');
+        let fullMenuData = []; 
+        
+        function initializeApp() {
+            appContent.classList.remove('hidden'); // Mostra o conteúdo da página
+
+            // Seletores (restante)
+            const menuList = document.getElementById('menu-list');
+            const loadingItems = document.getElementById('loading-items');
+            const addItemForm = document.getElementById('add-item-form');
+            const categoryList = document.getElementById('category-list');
+            const loadingCategories = document.getElementById('loading-categories');
+            const addCategoryForm = document.getElementById('add-category-form');
+            const editModal = document.getElementById('edit-item-modal');
+            const editItemForm = document.getElementById('edit-item-form'); // Agora não será mais 'null'
+            const cancelEditBtn = document.getElementById('cancel-edit-btn');
+            const categorySelect = document.getElementById('category-select');
+            const editCategorySelect = document.getElementById('edit-category-select');
+
+            // Funções (baseadas no seu arquivo original 'gerenciar-cardapio.html')
+             async function fetchAllData() {
+                try {
+                    loadingCategories.textContent = 'Carregando...';
+                    loadingItems.textContent = 'Carregando...';
+                    const [catRes, menuRes] = await Promise.all([
+                        fetch('/categorias_api.php', { credentials: 'include' }), // <--- CORREÇÃO 'credentials'
+                        fetch('/cardapio_api.php', { credentials: 'include' })  // <--- CORREÇÃO 'credentials'
+                    ]);
+                    if (!catRes.ok || !menuRes.ok) throw new Error('Falha ao carregar dados');
+                    const categories = await catRes.json();
+                    const menu = await menuRes.json();
+                    fullMenuData = menu; 
+                    renderCategories(categories);
+                    renderMenu(menu);
+                    populateCategoryDropdowns(categories);
+                } catch (error) {
+                    loadingCategories.textContent = 'Erro ao carregar.';
+                    loadingItems.textContent = 'Erro ao carregar.';
+                }
+            }
+            function renderCategories(categories) {
+                loadingCategories.style.display = 'none';
+                categoryList.innerHTML = '';
+                if (categories.length === 0) {
+                    categoryList.innerHTML = '<p class="p-4 text-slate-500">Nenhuma categoria cadastrada.</p>';
+                    return;
+                }
+                categories.forEach(cat => {
+                    categoryList.innerHTML += `
+                        <div class="p-2 flex justify-between items-center">
+                            <span class="font-semibold">${cat.nome}</span>
+                            <button data-id="${cat.id}" class="delete-category-btn text-xs bg-red-100 text-red-800 p-1 rounded">Excluir</button>
+                        </div>`;
+                });
+            }
+            function renderMenu(menu) {
+                loadingItems.style.display = 'none';
+                menuList.innerHTML = '';
+                if (menu.length === 0) {
+                    menuList.innerHTML = '<p class="p-4 text-slate-500">Nenhum item cadastrado.</p>';
+                    return;
+                }
+                menu.forEach(item => {
+                    menuList.innerHTML += `
+                        <div class="p-3 flex justify-between items-center">
+                            <div>
+                                <p class="font-bold">${item.nome}</p>
+                                <p class="text-sm text-slate-600">${item.descricao || ''}</p>
+                                <p class="text-sm font-semibold text-green-600">R$ ${parseFloat(item.preco).toFixed(2)}</p>
+                            </div>
+                            <div>
+                                <button data-id="${item.id}" class="edit-item-btn text-xs bg-blue-100 text-blue-800 p-1 rounded mr-2">Editar</button>
+                                <button data-id="${item.id}" class="delete-item-btn text-xs bg-red-100 text-red-800 p-1 rounded">Excluir</button>
+                            </div>
+                        </div>`;
+                });
+            }
+            function populateCategoryDropdowns(categories) {
+                categorySelect.innerHTML = '<option value="">Selecione uma categoria...</option>';
+                editCategorySelect.innerHTML = '<option value="">Selecione uma categoria...</option>';
+                categories.forEach(cat => {
+                    categorySelect.innerHTML += `<option value="${cat.id}">${cat.nome}</option>`;
+                    editCategorySelect.innerHTML += `<option value="${cat.id}">${cat.nome}</option>`;
+                });
+            }
+            async function handleAddCategory(e) {
+                e.preventDefault();
+                const formData = new FormData(addCategoryForm);
+                try {
+                    const response = await fetch('/categorias_api.php', { method: 'POST', body: formData, credentials: 'include' }); // <--- CORREÇÃO 'credentials'
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message);
+                    addCategoryForm.reset();
+                    fetchAllData(); // Recarrega tudo
+                } catch (error) { alert(`Erro: ${error.message}`); }
+            }
+            async function handleAddItem(e) {
+                e.preventDefault();
+                const formData = new FormData(addItemForm);
+                const msgEl = document.getElementById('item-form-message');
+                msgEl.textContent = 'Enviando...';
+                try {
+                    const response = await fetch('/cardapio_api.php', { method: 'POST', body: formData, credentials: 'include' }); // <--- CORREÇÃO 'credentials'
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message);
+                    msgEl.textContent = 'Item adicionado!';
+                    addItemForm.reset();
+                    fetchAllData(); 
+                } catch (error) { msgEl.textContent = `Erro: ${error.message}`; }
+            }
+            async function handleUpdateItem(e) {
+                 e.preventDefault();
+                 const formData = new FormData(editItemForm);
+                 const msgEl = document.getElementById('edit-item-message');
+                 msgEl.textContent = 'Salvando...';
+                 try {
+                     const response = await fetch('/cardapio_api.php', { method: 'POST', body: formData, credentials: 'include' }); // <--- CORREÇÃO 'credentials'
+                     const data = await response.json();
+                     if (!response.ok) throw new Error(data.message);
+                     msgEl.textContent = 'Item atualizado!';
+                     editModal.classList.add('hidden');
+                     fetchAllData();
+                 } catch (error) { msgEl.textContent = `Erro: ${error.message}`; }
+            }
+            async function handleListClick(e) {
+                const target = e.target;
+                if (target.classList.contains('delete-category-btn')) {
+                    if (!confirm('Tem certeza? Isso pode afetar itens de cardápio.')) return;
+                    try {
+                        const response = await fetch(`/categorias_api.php?id=${target.dataset.id}`, { method: 'DELETE', credentials: 'include' }); // <--- CORREÇÃO 'credentials'
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.message);
+                        fetchAllData();
+                    } catch (error) { alert(`Erro: ${error.message}`); }
+                }
+                if (target.classList.contains('delete-item-btn')) {
+                     if (!confirm('Tem certeza?')) return;
+                     try {
+                        const response = await fetch(`/cardapio_api.php?id=${target.dataset.id}`, { method: 'DELETE', credentials: 'include' }); // <--- CORREÇÃO 'credentials'
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.message);
+                        fetchAllData();
+                    } catch (error) { alert(`Erro: ${error.message}`); }
+                }
+                if (target.classList.contains('edit-item-btn')) {
+                    const item = fullMenuData.find(i => i.id == target.dataset.id);
+                    if (item) {
+                        document.getElementById('edit-item-id').value = item.id;
+                        document.getElementById('edit-nome').value = item.nome;
+                        document.getElementById('edit-preco').value = item.preco;
+                        document.getElementById('edit-descricao').value = item.descricao;
+                        document.getElementById('edit-category-select').value = item.categoria;
+                        document.getElementById('edit-item-message').textContent = '';
+                        editModal.classList.remove('hidden');
+                    }
+                }
+            }
+            
+            // Listeners
+            addCategoryForm.addEventListener('submit', handleAddCategory);
+            addItemForm.addEventListener('submit', handleAddItem);
+            editItemForm.addEventListener('submit', handleUpdateItem); // O JavaScript não vai mais quebrar aqui
+            categoryList.addEventListener('click', handleListClick);
+            menuList.addEventListener('click', handleListClick);
+            cancelEditBtn.addEventListener('click', () => editModal.classList.add('hidden'));
+
+            // Carga inicial
+            fetchAllData();
+        }
+
+        // ========================================================
+        // ### CORREÇÃO "CHROME VS EDGE" APLICADA AQUI ###
+        // ========================================================
+        fetch('/pedidos_api.php?status=ativos&limit=1', { credentials: 'include' }) // Faz um "ping" na API protegida
+            .then(res => { 
+                if (res.ok) { 
+                    initializeApp(); // Inicia a página se estiver logado
+                } else { 
+                    // Se não estiver logado (403 ou outro erro), redireciona para o login
+                    window.location.href = '/painel/index.html'; 
+                } 
+            })
+            .catch(err => { 
+                // Erro de rede ou outro erro grave
+                console.error("Erro na verificação inicial:", err);
+                window.location.href = '/painel/index.html'; 
+            });
+    });
+    </script>
+</body>
+</html>

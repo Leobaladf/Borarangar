@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios de Pedidos - BoraRangar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .star-rating { color: #f59e0b; font-size: 1.1rem; }
+        .star-rating .empty { color: #d1d5db; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+   \\ <div id="login-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    \\    <div class="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+     \\       <h2 class="text-3xl font-bold text-slate-800 mb-2">Acesso Restrito</h2>
+      \\      <p class="text-slate-500 mb-6">Insira suas credenciais de administrador.</p>
+      \\      <form id="login-form">
+       \\         <input type="email" id="email-input" name="email" placeholder="E-mail" required class="w-full p-3 border-2 border-slate-200 rounded-lg text-lg text-center">
+        \\        <input type="password" id="password-input" name="senha" placeholder="Sua Senha" required class="w-full p-3 border-2 border-slate-200 rounded-lg text-lg text-center mt-4">
+         \\       <p id="error-message" class="text-red-500 text-sm h-4 my-4"></p>
+          \\      <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-lg">Entrar</button>
+           \\ </form>
+       \\ </div>
+   \\ </div>
+
+
+    <div id="login-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+        <h2 class="text-3xl font-bold text-slate-800 mb-2">Acesso Restrito</h2>
+        <p class="text-slate-500 mb-6">Insira suas credenciais de administrador.</p>
+        <form id="login-form">
+            <input type="email" id="email-input" name="email" placeholder="E-mail" required class="w-full p-3 border-2 border-slate-200 rounded-lg text-lg text-center">
+            <input type="password" id="password-input" name="senha" placeholder="Sua Senha" required class="w-full p-3 border-2 border-slate-200 rounded-lg text-lg text-center mt-4">
+            <p id="error-message" class="text-red-500 text-sm h-4 my-4"></p>
+            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-lg">Entrar</button>
+        </form>
+    </div>
+</div>
+    
+
+  <div id="app-content" class="hidden">
+        <header class="bg-white shadow-md">
+            <div class="max-w-7xl mx-auto p-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-slate-800">Histórico e Relatórios de Pedidos</h1>
+                <a href="dashboard.html" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg">Voltar ao Painel</a>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto p-4 md:p-8">
+            <section class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-bold text-slate-700 mb-4">Filtros e Métricas</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div><label for="start-date" class="block text-sm font-medium text-slate-600">Data Inicial</label><input type="date" id="start-date" class="mt-1 block w-full p-2 border border-slate-300 rounded-md"></div>
+                    <div><label for="end-date" class="block text-sm font-medium text-slate-600">Data Final</label><input type="date" id="end-date" class="mt-1 block w-full p-2 border border-slate-300 rounded-md"></div>
+                    <div><label for="status-filter" class="block text-sm font-medium text-slate-600">Status</label><select id="status-filter" class="mt-1 block w-full p-2 border border-slate-300 rounded-md"><option value="todos">Todos</option><option value="concluido" selected>Concluído</option><option value="cancelado">Cancelado</option><option value="recusado">Recusado</option><option value="novo">Novo</option><option value="preparacao">Em Preparação</option><option value="pronto">Pronto</option></select></div>
+                    <button id="filter-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Filtrar</button>
+                </div>
+                <div id="metrics-summary" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t">
+                    <div class="bg-slate-100 p-4 rounded-lg text-center"><p class="text-sm font-semibold text-slate-500">Pedidos (Filtro)</p><p id="total-orders-filtered" class="text-3xl font-bold text-slate-800">--</p></div>
+                    <div class="bg-slate-100 p-4 rounded-lg text-center"><p class="text-sm font-semibold text-slate-500">Faturamento (Concluídos)</p><p id="total-revenue" class="text-3xl font-bold text-green-600">R$ --</p></div>
+                    <div class="bg-slate-100 p-4 rounded-lg text-center"><p class="text-sm font-semibold text-slate-500">Ticket Médio (Concluídos)</p><p id="average-ticket" class="text-3xl font-bold text-slate-800">R$ --</p></div>
+                    <div class="bg-slate-100 p-4 rounded-lg text-center"><p class="text-sm font-semibold text-slate-500">Tempo Médio (Concluídos)</p><p id="average-time" class="text-3xl font-bold text-slate-800">--</p></div>
+                </div>
+            </section>
+
+            <section class="bg-white shadow-md rounded-lg overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-50 text-xs text-slate-700 uppercase">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Data/Hora</th><th scope="col" class="px-6 py-3">Pedido</th><th scope="col" class="px-6 py-3">Cliente</th><th scope="col" class="px-6 py-3">Valor</th><th scope="col" class="px-6 py-3">Duração</th><th scope="col" class="px-6 py-3">Avaliação</th><th scope="col" class="px-6 py-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body"></tbody>
+                </table>
+                <div id="loading-orders" class="text-center p-6 text-slate-500"><p>Carregando pedidos...</p></div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const loginOverlay = document.getElementById('login-overlay');
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        const appContent = document.getElementById('app-content');
+        const formatCurrency = (value) => {
+             // Garante que o valor seja um número antes de formatar
+             const numberValue = Number(value);
+             if (isNaN(numberValue)) {
+                 return "R$ --"; // Retorna placeholder se não for número
+             }
+             return numberValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        };
+
+        \\loginForm.addEventListener('submit', async (e) => {
+         \\   e.preventDefault();
+         \\   errorMessage.textContent = '';
+         \\   const formData = new FormData(loginForm);
+          \\  formData.append('action', 'login');
+          \\  formData.append('subdominio', window.location.hostname.split('.')[0]); 
+          \\  try {
+           \\     const response = await fetch('/usuario_api.php', { method: 'POST', body: formData });
+            \\    const data = await response.json();
+            \\    if (data.status === 'success') { initializeAppAndListeners(); } 
+             \\   else { errorMessage.textContent = data.message || 'Falha no login.'; }
+           \\ } catch (error) { errorMessage.textContent = 'Erro de conexão.'; }
+      \\  });
+
+        
+
+let appInitialized = false;
+        function initializeAppAndListeners() {
+            if (appInitialized) return;
+            appInitialized = true;
+            loginOverlay.classList.add('hidden');
+            appContent.classList.remove('hidden');
+
+            const startDateInput = document.getElementById('start-date');
+            const endDateInput = document.getElementById('end-date');
+            const statusFilter = document.getElementById('status-filter');
+            const filterBtn = document.getElementById('filter-btn');
+            const ordersTableBody = document.getElementById('orders-table-body');
+            const loadingOrders = document.getElementById('loading-orders');
+            const totalOrdersFilteredEl = document.getElementById('total-orders-filtered');
+            const totalRevenueEl = document.getElementById('total-revenue');
+            const averageTicketEl = document.getElementById('average-ticket');
+            const averageTimeEl = document.getElementById('average-time');
+
+            async function fetchOrders() {
+                 loadingOrders.style.display = 'block'; ordersTableBody.innerHTML = ''; resetMetrics(); 
+                 const startDate = startDateInput.value, endDate = endDateInput.value, status = statusFilter.value;
+                 let apiUrl = `/pedidos_api.php?status=${status}`;
+                 if (startDate) apiUrl += `&data_inicio=${startDate}`;
+                 if (endDate) apiUrl += `&data_fim=${endDate}`;
+                 try {
+                     const response = await fetch(apiUrl);
+                     if (response.status === 403) { window.location.reload(); return; }
+                     if (!response.ok) throw new Error(`Erro: ${response.statusText}`);
+                     const pedidos = await response.json();
+                      // Adiciona um log para ver os dados brutos recebidos
+                      console.log("Dados recebidos da API:", pedidos); 
+                     renderOrders(pedidos);
+                     calculateMetrics(pedidos);
+                 } catch(error) { console.error("Erro ao buscar/processar dados:", error); loadingOrders.innerHTML = `<p class="text-red-500">${error.message}</p>`; } 
+                 finally { loadingOrders.style.display = 'none'; }
+            }
+
+            function renderStars(rating) { const numericRating = Number(rating); if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) { return '<span class="text-xs text-slate-400">N/A</span>'; } let starsHTML = ''; for (let i = 1; i <= 5; i++) { starsHTML += `<span class="${i <= numericRating ? '' : 'empty'}">★</span>`; } return `<span class="star-rating">${starsHTML}</span>`; }
+            
+            function renderOrders(pedidos) {
+                ordersTableBody.innerHTML = '';
+                if (!Array.isArray(pedidos) || pedidos.length === 0) { // Verifica se é um array
+                    ordersTableBody.innerHTML = '<tr><td colspan="7" class="text-center p-4 text-slate-500">Nenhum pedido encontrado.</td></tr>'; 
+                    return;
+                }
+                pedidos.forEach(pedido => {
+                    const row = document.createElement('tr'); row.className = 'bg-white border-b hover:bg-slate-50';
+                    const dataPedido = pedido.created_at ? new Date(pedido.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '--';
+                    const clienteNome = pedido.detalhes_pedido?.cliente?.nome || 'Cliente Balcão';
+                    
+                    // --- CORREÇÃO CÁLCULO DURAÇÃO ---
+                    let duration = '--';
+                    // Calcula apenas se o status for 'concluido' e as datas existirem e forem válidas
+                    if (pedido.status === 'concluido' && pedido.created_at && pedido.updated_at) {
+                         try {
+                            const start = new Date(pedido.created_at);
+                            const end = new Date(pedido.updated_at);
+                            // Verifica se as datas são válidas antes de subtrair
+                            if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) { 
+                                const diffSeconds = (end - start) / 1000; // Diferença em segundos
+                                const minutes = Math.floor(diffSeconds / 60);
+                                const seconds = Math.floor(diffSeconds % 60);
+                                duration = `${minutes}m ${seconds}s`;
+                            } else {
+                                console.warn(`Datas inválidas ou inconsistentes para pedido ${pedido.id}:`, pedido.created_at, pedido.updated_at);
+                            }
+                         } catch(e) { console.error(`Erro ao calcular duração para pedido ${pedido.id}:`, e); }
+                    }
+                    // --- FIM CORREÇÃO DURAÇÃO ---
+
+                    row.innerHTML = `<td class="px-6 py-4">${dataPedido}</td> <td class="px-6 py-4 font-mono font-bold text-red-600">#${pedido.id}</td> <td class="px-6 py-4">${clienteNome}</td> <td class="px-6 py-4 font-semibold">${formatCurrency(pedido.total || 0)}</td> <td class="px-6 py-4">${duration}</td> <td class="px-6 py-4">${renderStars(pedido.rating)}</td> <td class="px-6 py-4 capitalize">${pedido.status || 'Desconhecido'}</td>`;
+                    ordersTableBody.appendChild(row);
+                });
+            }
+
+            function calculateMetrics(pedidos) {
+                if (!Array.isArray(pedidos)) { // Proteção extra
+                     resetMetrics(); return;
+                }
+                const pedidosConcluidos = pedidos.filter(p => p.status === 'concluido');
+                
+                const totalPedidosFiltrados = pedidos.length;
+                const totalPedidosConcluidos = pedidosConcluidos.length;
+                
+                // --- CORREÇÃO CÁLCULO FATURAMENTO ---
+                // Garante que p.total seja tratado como número
+                const faturamentoTotal = pedidosConcluidos.reduce((sum, p) => sum + (Number(p.total) || 0), 0);
+                // --- FIM CORREÇÃO FATURAMENTO ---
+                
+                const ticketMedio = totalPedidosConcluidos > 0 ? faturamentoTotal / totalPedidosConcluidos : 0; 
+                
+                // --- CORREÇÃO CÁLCULO TEMPO MÉDIO ---
+                let totalSecondsConcluidos = 0;
+                let countPedidosComTempo = 0;
+                pedidosConcluidos.forEach(p => {
+                    if (p.created_at && p.updated_at) {
+                        try {
+                            const start = new Date(p.created_at);
+                            const end = new Date(p.updated_at);
+                             // Verifica se as datas são válidas e end >= start
+                            if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) {
+                                const diffSeconds = (end - start) / 1000;
+                                totalSecondsConcluidos += diffSeconds;
+                                countPedidosComTempo++;
+                            }
+                        } catch(e) {/* Ignora erro */}
+                    }
+                });
+                const averageSeconds = countPedidosComTempo > 0 ? totalSecondsConcluidos / countPedidosComTempo : 0;
+                const averageMinutes = Math.floor(averageSeconds / 60);
+                const averageRemainderSeconds = Math.floor(averageSeconds % 60);
+                // --- FIM CORREÇÃO TEMPO MÉDIO ---
+
+                totalOrdersFilteredEl.textContent = totalPedidosFiltrados;
+                totalRevenueEl.textContent = formatCurrency(faturamentoTotal); // Usa a função corrigida
+                averageTicketEl.textContent = formatCurrency(ticketMedio); // Usa a função corrigida
+                averageTimeEl.textContent = countPedidosComTempo > 0 ? `${averageMinutes}m ${averageRemainderSeconds}s` : '--';
+            }
+            
+            function resetMetrics() { totalOrdersFilteredEl.textContent = '--'; totalRevenueEl.textContent = 'R$ --'; averageTicketEl.textContent = 'R$ --'; averageTimeEl.textContent = '--'; }
+
+            filterBtn.addEventListener('click', fetchOrders);
+            const today = new Date().toISOString().split('T')[0];
+            startDateInput.value = today; endDateInput.value = today;
+            fetchOrders(); 
+        }
+
+        // Verifica sessão inicial
+        fetch('/pedidos_api.php?status=ativos&limit=1')
+            .then(res => { if (res.ok) { initializeAppAndListeners(); } else if (res.status === 403) { loginOverlay.classList.remove('hidden'); appContent.classList.add('hidden'); } else { throw new Error('Erro inesperado'); } })
+            .catch(err => { loginOverlay.classList.remove('hidden'); appContent.classList.add('hidden'); });
+    });
+    </script>
+</body>
+</html>

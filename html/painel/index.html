@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Lojista BoraRangar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-800 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-96 text-center">
+        <h1 class="text-3xl font-bold mb-2 text-slate-700">Painel do Lojista</h1>
+        <p class="text-slate-500 mb-6">BoraRangar</p>
+        <form id="lojista-login-form">
+            <input type="email" id="email" placeholder="Seu e-mail" required class="w-full p-3 mb-4 border-2 rounded-lg text-center">
+            <input type="password" id="password" placeholder="Sua senha" required class="w-full p-3 border-2 rounded-lg text-center">
+            <p id="error-message" class="text-red-500 text-sm h-5 mb-4"></p>
+            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg text-lg">Entrar</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('lojista-login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = '';
+
+            const formData = new FormData();
+            formData.append('action', 'login');
+            formData.append('email', document.getElementById('email').value);
+            formData.append('senha', document.getElementById('password').value);
+
+            // --- ESTA É A PARTE IMPORTANTE ---
+            // Pega o subdomínio (ex: 'pizzaria' de 'pizzaria.borarangar.com.br')
+            const parts = window.location.hostname.split('.');
+            const subdominio = parts[0] === 'www' ? parts[1] : parts[0];
+            formData.append('subdominio', subdominio);
+            // ---------------------------------
+
+            try {
+                // Usamos o caminho para a API
+                const response = await fetch('/usuario_api.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Se o login der certo, redireciona para o dashboard
+                    window.location.href = '/painel/dashboard.html';
+                } else {
+                    errorMessage.textContent = data.message || 'Erro ao autenticar.';
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Falha na comunicação com o servidor.';
+            }
+        });
+    </script>
+</body>
+</html>
