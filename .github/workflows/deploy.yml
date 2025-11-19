@@ -50,11 +50,13 @@ jobs:
           
           echo "Arquivos preparados"
 
-      - name: Configurar FTP
-        id: ftp-config
+      - name: Instalar sshpass
         run: |
-          HOST="${{ secrets.HOST }}"
-          PORTA="${{ secrets.PORTA }}"
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+
+      - name: Deploy via SFTP/SSH
+        run: |
           DIRETORIO="${{ secrets.DIRETORIO }}"
           
           # Garantir que o diretório termine com /
@@ -62,36 +64,25 @@ jobs:
             DIRETORIO="${DIRETORIO}/"
           fi
           
-          # Configurar servidor com porta se necessário
-          if [[ -n "$PORTA" ]] && [[ "$PORTA" != "" ]]; then
-            FTP_SERVER="${HOST}:${PORTA}"
-          else
-            FTP_SERVER="$HOST"
-          fi
+          # Adicionar host ao known_hosts
+          ssh-keyscan -p ${{ secrets.PORTA }} ${{ secrets.HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
           
-          echo "server=${FTP_SERVER}" >> $GITHUB_OUTPUT
-          echo "server-dir=${DIRETORIO}" >> $GITHUB_OUTPUT
-          echo "Servidor FTP: ${FTP_SERVER}"
-          echo "Diretorio remoto: ${DIRETORIO}"
-
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@4.3.0
-        with:
-          server: ${{ steps.ftp-config.outputs.server }}
-          username: ${{ secrets.USUARIO }}
-          password: ${{ secrets.SENHA }}
-          local-dir: ./deploy/
-          server-dir: ${{ steps.ftp-config.outputs.server-dir }}
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/.github/**
-            **/node_modules/**
-            **/.env
-            **/*.save
-            **/*.old
-            **/*.agada
-            **/deploy/**
+          # Criar diretório remoto se não existir
+          sshpass -p "${{ secrets.SENHA }}" ssh -p ${{ secrets.PORTA }} -o StrictHostKeyChecking=no ${{ secrets.USUARIO }}@${{ secrets.HOST }} "mkdir -p ${DIRETORIO}"
+          
+          # Fazer deploy usando rsync via SSH com senha
+          sshpass -p "${{ secrets.SENHA }}" rsync -avz --delete \
+            -e "ssh -p ${{ secrets.PORTA }} -o StrictHostKeyChecking=no" \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='deploy' \
+            --exclude='node_modules' \
+            --exclude='*.save' \
+            --exclude='*.old' \
+            --exclude='*.agada' \
+            --exclude='.env' \
+            ./deploy/ \
+            ${{ secrets.USUARIO }}@${{ secrets.HOST }}:${DIRETORIO}
 
       - name: Notificar sucesso
         if: success()
